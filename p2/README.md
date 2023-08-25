@@ -1,3 +1,5 @@
+# DRAFT!  Don't start yet.
+
 # P2 (8% of grade): Key/Value Store Service
 
 ## Overview

@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-message Sighting {
-    string beach = 1;
-    string animal = 2;
-}

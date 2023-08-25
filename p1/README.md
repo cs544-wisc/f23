@@ -1,3 +1,5 @@
+# DRAFT!  Don't start yet.
+
 # P1 (4% of grade): Predicting COVID Deaths with PyTorch
 
 ## Overview

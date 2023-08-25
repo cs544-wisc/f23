@@ -1,6 +1,0 @@
-services:
-        jupyter:
-                image: myimg
-                deploy:
-                        replicas: 3
-        # TODO: other services

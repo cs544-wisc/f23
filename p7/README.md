@@ -1,3 +1,5 @@
+# DRAFT!  Don't start yet.
+
 # P7 (8% of grade): BigQuery, Loans Data
 
 ## Note
