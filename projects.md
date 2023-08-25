@@ -1,19 +1,29 @@
 # General Project Directions
 
-## Collaboration Policy
+## Collaboration/Conduct Policy
 
 Students may work alone or optionally work in groups of two.
 
-Policies for partners
+**Partners**
 * a comment at top should specify the names of both partners by their @wisc.edu email
-* it's OK for the submissions of two partners to either be identical or different
+* there should only be one submission in one GitHub classroom repo for the team
+* the repo history should show at least one commit from each partner
 * it's NOT OK to submit code from your partner that you didn't help write or understand
 
-Policies for other collaboration
+**Other Collaboration**
 * a comment at the top should list everybody you talked to or collaborated with (besides course staff, of course) by their @wisc.edu email
 * you can talk about logic and help each other debug
 * **no code copying**; for example, no emailing code (or similar), no photos of code, no looking at code and typing it line by line
 * copying code then changing it is still copying and thus not allowed
+
+**ChatGPT, Large Language Models, Interactive Tools**
+* use of the tools is permitted, with proper citation
+* a "chats" directory should contain screenshots or PDFs of any chats, in their entirety.  Name them as chat1.png, chat2.png, etc.  PDF and JPG formats are also permitted.
+
+**Other Online Resources**
+* you **may not** use any online resource intended to provide solutions specific to CS 544
+* you **may** use other online resources, with proper citation
+* add a comment in your code before anything you copied from such sources
 
 ## Compute Setup
 
@@ -21,24 +31,18 @@ We'll be using Google cloud (GCP) for our work this semester.  We'll be
 sharing $100 of credit per student.  Some notes about how to manage this credit:
 
 * some people have multiple GCP accounts, for example, one with @gmail.com and one with @wisc.edu.  You must redeem the credits with your @wisc.edu, but it's fine to then use them under any account
-* Google accounts have multiple "billing accounts" -- these might typically correspond to credit cards.  In your case, you'll have two billing accounts corresponding to two $50 credits we'll provide
+* Google accounts have multiple "billing accounts" -- these might typically correspond to credit cards.  In your case, you'll have a billing account corresponding to $100 credit we'll provide
 * Virtual machines and other resources are created under "projects", which are assigned to a billing account (and can be reassigned).  When your first billing count is nearly exhausted, you'll need to move your VM over (or create a new one)
 
 Here is a plan/budget for what VM you should have at each point during the semester:
 
-https://docs.google.com/spreadsheets/d/1wSURq5fH5CkUKFLk1MijVMiIbCdUSJbvt0OPx_JfCCc/edit?usp=sharing
+TODO
 
 Please monitor your credits carefully.  If you're burning through credits faster than the schedule, it is your responsibility to conserve credits (for example, by shutting down your VM overnight).
 
 Your VMs should always run the Ubuntu 22.04 LTS (be sure it is the "x86/64" option).  Here are versions for the software we'll use this semester:
 
-* Ubuntu 22.04
-* Docker 20.10 (any subversion)
-* Hadoop 3.2.4
-* Spark 3.2.2
-* Cassandra 4.0.7
-* Spark-Cassandra-Connector 2.12
-* Java 1.8.0
+TODO
 
 Be sure to backup your work regularly to a private GitHub repo, or with an `scp` to your personal computer.
 
@@ -53,11 +57,7 @@ personal computer.
 You'll be doing all your work on GitHub classroom.  Watch for Canvas
 announcements providing project invite links.
 
-Parters:
-* If you worked very closely with a partner and have identical code, please make one submission.  Requirement: commit history must show at least one commit from each partner.
-* If you had a partner but worked less closely with each other, you can make separate submissions.  Still include code comments about who your partner was.
-
-Format:
+* if you worked with a partner, make one submission.  Requirement: commit history must show at least one commit from each partner.
 * projects have four parts; for notebooks, use big headers to divide your work into the four parts ("# Part 1: ...")
 * for question based project work, (Q1, Q2, etc), include comments like ("# Q1: ...") before the answers
 * each project will specify some specific files you need to commit (like a p1.ipynb or server.py); in addition to those, include whatever is needed (except data) for somebody to run your code
@@ -93,10 +93,3 @@ You can always ask more specific questions if you're looking for some reassuranc
 * "what would be a good way to test this function?"
 * "would this plot be clearer with ????, or without it"
 * "is this result supposed to be deterministic, or are there reasons it might be different for other deployments?"
-
-## Why aren't there tests?
-
-We're primarily manually grading for a couple reasons:
-
-* as an upper level class, we want to give you more flexibility how to solve problems; it's hard to autograde open-ended work
-* autograding is typically done by running a student's code inside a Docker container.  But your projects are based on Docker containers and Docker containers don't nest well
