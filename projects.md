@@ -71,6 +71,8 @@ Common exceptions, and who to ask:
 - Busyness: same policy as illness (you might be unusually busy due to travel, extracurriculars, other courses, etc).  This shouldn't happen more than a couple times a semester
 - McBurney accomodations: **email your instructor** a proposed policy for the semester (we can discuss again if your situation changes during the semester)
 
+If you're working with a project partner who has the late penalty waived by a TA, that means it is waived for you as well, even if you don't have special circumstances yourself.
+
 For other cases (falling very far behind, family emergencies, etc), **reach out to your instructor** to discuss possible accomodations.
 
 ## Resubmission Policy
