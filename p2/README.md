@@ -1,192 +1,201 @@
 # DRAFT!  Don't start yet.
 
-# P2 (8% of grade): Key/Value Store Service
+# P2 (6% of grade): Predicting COVID Deaths with PyTorch
 
 ## Overview
 
-One of the simplest storage systems records the values associated with
-keys, much like a Python `dict`, but via a service that could be
-shared by code running on different computers.
-
-In this project, you'll build a simple K/V store server that records
-number values for different string keys.  Your server can use a Python
-`dict` for this purpose, but you'll need to use threads and locking
-for efficiency and safety.  A client will communicate with your server
-via RPC calls.
+In this project, we'll use PyTorch to create a regression model that
+can predict how many deaths there will be for a WI census tract, given
+the number of people who have tested positive, broken down by age.
+The train.csv and test.csv files we provide are based on this dataset:
+https://data.dhsgis.wi.gov/datasets/wi-dhs::covid-19-vaccination-data-by-census-tract
 
 Learning objectives:
-* communicate between clients and servers via gRPC
-* use locking for safety
-* cache the results of expensive operations for efficiency
-* measure performance statistics like cache hit rate and tail latency
-* deploy your code in a Docker container
+* multiply tensors
+* use GPUs (when available)
+* optimize inputs to minimize outputs
+* use optimization to optimize regression coefficients
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* Feb 20: fixed contradictory directions about number of server threads (there should be 4)
+* Feb 6: fix `trainX` and `trainY` examples
 
-## Part 1: gRPC Interface
+## Part 1: Prediction with Hardcoded Model
 
-Read this guide for gRPC with Python:
-* https://grpc.io/docs/languages/python/quickstart/
-* https://grpc.io/docs/languages/python/basics/
-
-Install the tools (be sure to upgrade pip first, as described in the directions):
+Install some packages:
 
 ```
-pip3 install grpcio grpcio-tools
+pip3 install pandas
+pip3 install -f https://download.pytorch.org/whl/torch_stable.html torch==1.13.1+cpu
+pip3 install tensorboard
 ```
 
-Create a file called `numstore.proto` containing a service called `NumStore`, which contains two RPCs:
+Use train.csv and test.csv to construct four PyTorch tensors:
+`trainX`, `trainY`, `testX`, and `testY`.  Hints:
 
-1. `SetNum` takes a `key` (string) and `value` (int) as parameters and returns a `total` (int)
-2. `Fact` takes a `key` (string) as a parameter and returns a `value` (int), `hit` (bool), and `error` (string)
+* you can use `pd.read_csv` to load CSVs to DataFrames
+* you can use use `df.values` to get a numpy array from a DataFrame
+* you can convert from numpy to PyTorch (https://pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html)
+* you'll need to do some 2D slicing: the last column contains your y values and the others contain your X values
 
-Specify `syntax="proto3";` at the top of your file.  Build it:
-
-```
-python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. numstore.proto
-```
-
-Verify `numstore_pb2_grpc.py` was generated.
-
-## Part 2: Server Implementation
-
-Create a `server.py` file and add a class that inherits from
-`numstore_pb2_grpc.NumStoreServicer`.  It should override the two
-methods.
-
-At the end, add a `server()` function and call it (adapting the
-example from the gRPC documentation).  You can import `futures` like
-this:
+`trainX` (number of positive COVID tests per tract, by age group) should look like this:
 
 ```python
-from concurrent import futures
+tensor([[ 24.,  51.,  44.,  ...,  61.,  27.,   0.],
+        [ 22.,  31., 214.,  ...,   9.,   0.,   0.],
+        [ 84., 126., 239.,  ...,  74.,  24.,   8.],
+        ...,
+        [268., 358., 277.,  ..., 107.,  47.,   7.],
+        [ 81., 116.,  90.,  ...,  36.,   9.,   0.],
+        [118., 156., 197.,  ...,  19.,   0.,   0.]], dtype=torch.float64)
 ```
 
-Requirements:
-* have 4 worker threads
-* use `numstore_pb2_grpc.add_NumStoreServicer_to_server`
-* use port 5440
-
-### `SetNum(key, value)`
-
-Your server should have two globals variables, a `dict` of values, and an `int` that equals the sum of all the values in the `dict`.
-
-When `SetNum(key, value)` is called, it should set
-`YOUR_DICTS_NAME[key] = value` and update the variable storing the
-total sum of values.  It should return the new total.
-
-Requirement:
-* don't loop over all the entries in your dict each time to update the total (instead, compare the new value to the old value to determine how the total should change)
-
-### `Fact(key)`
-
-This should lookup the value from the global dictionary corresponding
-to that key, then return the factorial of that value.
-
-The error will normally be unset, but it should contain an error
-message if the key can't be found.
-
-### Manual testing:
-
-So far, the following client code should produce the expected output indicated by the comments:
+`trainY` (number of COVID deaths per tract) should look like this (make sure it is vertical, not 1 dimensional!):
 
 ```python
-import sys
-import grpc
-import numstore_pb2, numstore_pb2_grpc
-
-port = "5440"
-addr = f"127.0.0.1:{port}"
-channel = grpc.insecure_channel(addr)
-stub = numstore_pb2_grpc.NumStoreStub(channel)
-
-# TEST SetNum
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="A", value=1))
-print(resp.total) # should be 1
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="B", value=10))
-print(resp.total) # should be 11
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="A", value=5))
-print(resp.total) # should be 15
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="B", value=0))
-print(resp.total) # should be 5
-
-# TEST Fact
-resp = stub.Fact(numstore_pb2.FactRequest(key="A"))
-print(resp.value) # should be 120
+tensor([[3.],
+        [2.],
+        [9.],
+        ...,
+        [5.],
+        [2.],
+        [5.]], dtype=torch.float64)
 ```
 
-### Caching
+Let's predict the number of COVID deaths in the test dataset under the
+assumption that the deathrate is 0.004 for those <60 and 0.03 for those >=60.
+Encode these assumptions as coefficients in a tensor by pasting
+the following:
 
-For large numbers, it may be slow to compute the factorial.  Add a
-structure to remember previously computed answers for specific
-numbers.
-
-Requirements:
-* the cache should hold a maximum of 10 entries
-* write a comment specifying your eviction policy (could be random, LRU, FIFO, something you make up...)
-* check before doing the calculation for factorial
-* in the return value, use `hit=True` or `hit=False` to indicate whether or not the cache was used for the answer
-
-### Locking
-
-Your server has 4 threads, so use a lock (https://docs.python.org/3/library/threading.html#threading.Lock) when accessing any global variables from `SetNum` or `Fact`.
-
-Requirements:
-* the lock should protect any access to shared structures
-* the lock should always get released, even if there is an exception
-* the lock should NOT be held when factorials are being calculated
-
-## Part 3: Client
-
-The client should start some threads or processes that send random requests to the server.  The port of the server should be specified on the command line, like this:
-
-```
-python3 client.py 5440
+```python
+coef = torch.tensor([
+        [0.0040],
+        [0.0040],
+        [0.0040],
+        [0.0040],
+        [0.0040],
+        [0.0040], # POS_50_59_CP
+        [0.0300], # POS_60_69_CP
+        [0.0300],
+        [0.0300],
+        [0.0300]
+], dtype=testX.dtype)
+coef
 ```
 
+Multiply the first row `testX` by the `coef` vector and use `.item()`
+to print the predicted number of deaths in this tract.
+
+Requirement: your code should be written such that if
+`torch.cuda.is_available()` is true, all your tensors (`trainX`,
+`trainY`, `testX`, `testY`, and `coef`) should be move to a GPU prior
+to any multiplication.
+
+## Part 2: R^2 Score
+
+Create a `predictedY` tensor by multiplying all of `testX` by `coef`.
+We'll measure the quality of these predictions by writing a function
+that can compare `predictedY` to the true values in `testY`.
+
+The R^2 score
+(https://en.wikipedia.org/wiki/Coefficient_of_determination) can be
+used as a measure of how much variance is a y column a model can
+predict (with 1 being the best score).  Different definitions are
+sometimes used, but we'll define it in terms of two variables:
+
+* **SStot**.  To compute this, first compute the average testY value.  Subtract to get the difference between each testY value and the average.  Square the differences, then add the results to get `SStot`
+* **SSreg**.  Same as SStot, but instead of subtracting the average from each testY value, subtract the prediction from `testY`
+
+If our predictions are good, `SSreg` will be much smaller than `SStot`.  So define `improvement = SStot - SSreg`.
+
+The R^2 score is just `improvement/SStot`.
+
+Generalize the above logic into an `r2_score(trueY, predictedY)` that
+you write that can compute the R^2 score given any vector of true
+values alongside a vector of predictions.
+
+Call `r2_score(testY, predictedY)` and display the value in your notebook.
+
+## Part 3: Optimization
+
+Let's say `y = x^2 - 8x + 19`.  We want to find the x value that minimizes y.
+
+First, what is y when x is a tensor containing 0.0?
+
+```python
+x = torch.tensor(0.0)
+y = x**2 - 8*x + 19
+y
+```
+
+We can use a PyTorch optimizer to try to find a good x value.  The
+optimizer will run a loop where it computes y, computes how a small
+change in x would effect y, then makes a small change to x to try to
+make y smaller.
+
+There are many optimizers in PyTorch; we'll use SGD here.  You can
+create the optimizer like this:
+
+```python
+optimizer = torch.optim.SGD([????], lr=0.1)
+```
+
+For `????`, you can pass in one or more tensors that you're trying to
+optimize (in this case, you're trying to find the best value for `x`).
+
+The optimizer is based on gradients (an idea from Calculus, but you
+don't need to know Calculus to do this project).  You'll need to pass
+`requires_grad=True` to `torch.tensor` in your earlier code that
+defined `x` so that we can track gradients.
+
+Write a loop that executes the following 30 times:
+
+```python
+    optimizer.zero_grad()
+    y = ????
+    y.backward()
+    optimizer.step()
+    print(x, y)
+```
+
+Notice the small changes to x with each iteration (and resulting
+changes to y).  Report `x.item()` in your notebook as the optimized
+value.
+
+Create a line plot of x and y values to verify that best x value you
+found via optimization seems about right.
+
+## Part 4: Linear Regression
+
+In part 1, you used a hardcoded `coef` vector to predict COVID deaths.  Now, you will start with random coefficients and optimize them.
+
+Steps:
+* create a TensorDataset (https://pytorch.org/docs/stable/data.html#torch.utils.data.TensorDataset) from your trainX and trainY.
+* create a DataLoader (https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader) that uses your dataset
+  * use shuffle
+  * try different batch sizes and decide what size to use
+* create a simple linear model by initializing `torch.nn.Linear`
+  * choose the size based on trainX and trainY
+* create an optimizer from `torch.optim.SGD` that will optimize the `.weight` and `.bias` parameters of your model
+* write a training loop to optimize your model with data from your DataLoader
+  * try different numbers of epochs
+  * calculate your loss with `torch.nn.MSELoss`
+
 Requirements:
-* there should be 8 threads/processes
-* each thread/process should send 100 random requests to the server
-* for each request, randomly decide between SetNum and Fact (50/50 mix)
-* for each request, randomly choose a key (from a list of 100 possible keys)
-* for SetNum requests, randomly select a number between 1 and 15
+* report the `r2_score` of your predictions on the test data; you must get >0.5
+* print out how long training took to run
+* create a bar plot showing each of the numbers in your `model.weight` tensor.  The x-axis should indicate the column names corresponding to each coefficient (from train.columns)
 
-The client should then print some stats at the end.
-
-Requirements:
-* print cache hit rate
-* print p50 response time
-* print p99 response time
-* it should be clear from the prints what each output number represents
-
-Feel free to install `numpy` if that helps with computing percentiles.
-
-## Part 4: Docker Deployment
-
-You should write a `Dockerfile` to build an image that runs your server.py.
-
-Requirements:
-* it should be possible to run `docker build -t p2 .`
-* it should be possible to run your server like this `docker run -p 54321:5440 p2`
+Tips:
+* it can be tricky choosing a good learning rate.  You can use tensorboard to better see what is happening as you tune it: https://pytorch.org/tutorials/recipes/recipes/tensorboard_with_pytorch.html#using-tensorboard-in-pytorch
+* if loss is fluctuating a lot even near the end of training, you might consider using a learning rate scheduler (https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate) to slow learning down near the end.  The project is certainly possible without this, however.
+* pay close attention to warnings about broadcasting and shapes.  Resolve that before proceeding with other troubleshooting.
 
 ## Submission
 
-You should organize and commit your files such that we can run the code in your repo like this:
-
-```
-python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. numstore.proto
-docker build -t p2 .
-docker run -d -p 54321:5440 p2
-python3 client.py 54321 > out.txt
-cat out.txt
-```
-
-Be sure to test the above, and commit the out.txt file you generated
-in the process.
+You should commit your work in a notebook named `p1.ipynb`.
 
 ## Approximate Rubric:
 
@@ -194,13 +203,13 @@ The following is approximately how we will grade, but we may make
 changes if we overlooked an important part of the specification or did
 not consider a common mistake.
 
-1. [x/1] SetNum and Fact have specified interface (part 1)
-2. [x/1] **SetNum** is logically correct (part 2)
-3. [x/1] **Fact** is logically correct (part 2)
-4. [x/1] Fact **caching** is correct and documented (part 2)
-5. [x/1] SetNum and Fact **locking** is correct (part 2)
-6. [x/1] server listens on **port 5440** with **4 workers** (part 2)
-7. [x/1] the client sends requests to the **specified port** from **8 tasks** (part 3)
-8. [x/1] the random workload is 100 requests per server, 50/50 SetNum/Fact, over 100 keys, and values between 1 and 15 (part 3)
-9. [x/1] hit rate and response time are correctly computed and displayed (part 3)
-10. [x/1] a **Dockerfile** can be used to dockerize server.py (part 4)
+1. [x/1] prediction from hardcoded coefficient vector (part 1)
+2. [x/1] when available, the tensors being multiplied are moved to a GPU (part 1)
+3. [x/1] the R^2 score is computed correctly (part 2)
+4. [x/1] the R^2 score is computed via a reusable function (part 2)
+5. [x/1] the best x value is found (part 3)
+6. [x/1] the line plot is correct (part 3)
+7. [x/1] the training loop correctly optimizes the coefficients (part 4)
+8. [x/1] the R^2 score is reported and >0.5 (part 4)
+9. [x/1] the execution time is printed (part 4)
+10. [x/1] a bar plot shows the coefficients (part 4)

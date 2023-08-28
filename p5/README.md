@@ -1,338 +1,241 @@
 # DRAFT!  Don't start yet.
 
-# P5 (regular project): Cassandra, Weather Data
+# P5 (6% of grade): Spark, Loan Applications
 
 ## Overview
 
-NOAA (National Oceanic and Atmospheric Administration) collects
-weather data from all over the world.  In this project, you'll explore
-how you could (1) store this data in Cassandra, (2) write a server for
-data collection, and (3) analyze the collected data via Spark.
+In this project, we'll use Spark to analyze loan applications in WI.
+You'll load your data to Hive tables and views so you can easily query
+them.  The big table (loans) has many IDs in columns; you'll need to
+join these against other tables/views to determine the meaning of
+these IDs.  In addition to your analysis, you'll study the performance
+impact of caching and bucketing.
 
-We'll also explore read/write availability tradeoffs.  When always
-want sensors to be able to upload data, but it is OK if we cannot
-always read the latest stats (we prefer an error over inconsistent
-results).
+**Important:** you'll answer ten questions in this project.  Paste
+  each question and it's number (e.g., "# Q1: ...") as a comment in your
+  notebook prior to each answer so we can easily search your notebook
+  and give you credit for your answers.
 
 Learning objectives:
-* create a schema for a Cassandra table that uses a partition key, cluster key, and static column
-* configure Spark catalogs to gain access to external data sources
-* create custom Cassandra types
-* create custom Spark UDFs (user defined functions)
-* configure queries to tradeoff read/write availability
-* refresh a stale cache
+* load data to Hive tables and views
+* write queries that use filtering, joining, grouping, and windowing
+* interpret Spark query explanations
+* optimize queries with bucketing and caching
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* updated the container setup page. Mounting cassandra.sh instead of main.sh
-* when inserting metatdata to weather station table only insert those stations belongs to Wisconsin only
-* Apr 7: vnode token example in Q2 was incorrect -- fixed it
-* Apr 10: Q4 calculate the correlation between the maximum temperatures in Madison and Milwaukee
-* Apr 11: updated examples to have server.py in "notebooks" (instead of "share")
-* Apr 12: added clarification about counts in q7
+* Mar 21: removed "agency" views to create
+* Mar 25: clarified that Q8 is for top 10; this is over all loans (not one bank)
+* Mar 29: made q4 more flexible to accomodate different approaches
+* Mar 30: Q6 is asking under what situation (when) you need Network I/O. If one of your queries does not need Network I/O explain why.
 
-## Part 1: Station Metadata
+## Machine Setup
 
-Using Docker compose, launch a cluster three Cassandra nodes.  For
-inspiration, here are some files that could help: [Container Setup
-Files](./containers.md).
-
-Use `docker ps` to see which container is using host port
-127.0.0.1:5000, then manually start Jupyter inside that container:
+~4 GB is barely enough for this project.  Take a moment to enable a 1
+GB swap file to supplement.  A swap file exists on storage, but acts
+as extra memory.  Note this has performance implications as storage is
+much slower than RAM.
 
 ```
-docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
+# https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-22-04
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+# htop should show 1 GB of swap beneath memory
 ```
 
-Create a `p5.ipynb` notebook for your work inside the `notebooks`
-directory.  Your notebook should start by connecting to the Cassandra
-cluster and running `drop keyspace if exists weather`.
+## Part 1: Data Setup
 
-Feel free to use the starter code to connect the Cassandra cluster
+Setup an environment with three containers, running the following:
+1. HDFS Namenode and Datanode on fresh file system; Spark boss; JupyterLab
+2. Spark worker
+2. Spark worker
 
-```python
-from cassandra.cluster import Cluster
-try:
-    cluster = Cluster(['p5-db-1', 'p5-db-2', 'p5-db-3'])
-    session = cluster.connect()
-except Exception as e:
-    print(e)
-```
+For inspiration, here are some files that could help: [Container Setup Files](./containers.md)
 
-Depending on the directory where you created your compose files, the
-container names may be different (e.g., not `p5-db-1`) -- please
-update the above snippet accordingly.
-
-Now write some code to do the following:
-* create a `weather` keyspace with 3x replication
-* inside `weather`, create a `station_record` type containing two ints: `tmin` and `tmax`
-* inside `weather`, create a `stations` table
-  * have four columns: `id` (text), `name` (text), `date` (date), `record` (weather.station_record)
-  * `id` is a partition key and corresponds to a station's ID (like 'USC00470273')
-  * `date` is a cluster key, ascending
-  * `name` is a static field (because there is only one name per ID).  Example: 'UW ARBORETUM - MADISON'
-  * `record` is a regular field because there will be many records per station partition
-
-#### Q1: what is the schema?
-
-Run the following so that we can see and check.
-
-```python
-print(cass.execute("describe keyspace weather").one().create_statement)
-print(cass.execute("describe table weather.stations").one().create_statement)
-```
-
-**Important:** you'll answer 7 questions in this project.  Paste each
-  question and it's number (e.g., "# Q1: ...") as a comment in your
-  notebook prior to each answer so we can easily search your notebook
-  and give you credit for your answers.
-
-#### Station Metadata
-
-Start a Spark session:
+Create a `p4.ipynb` notebook and create a session.  We'll enable Hive, with metadata stored on HDFS:
 
 ```python
 from pyspark.sql import SparkSession
-spark = (SparkSession.builder
-         .appName("p5")
-         .config('spark.jars.packages', 'com.datastax.spark:spark-cassandra-connector_2.12:3.2.0')
-         .config("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions")
+spark = (SparkSession.builder.appName("cs544")
+         .master("spark://main:7077")
+         .config("spark.executor.memory", "512M")
+         .config("spark.sql.warehouse.dir", "hdfs://main:9000/user/hive/warehouse")
+         .enableHiveSupport()
          .getOrCreate())
 ```
 
-Note that we're running Spark in a simple "local mode" -- we're not
-connecting to a Spark cluster so we won't have multiple workers.
-Tasks will be executed directly by the driver.  Also note that we're
-including the Spark/Cassandra connector extension.
+Download these files for this project:
+* https://pages.cs.wisc.edu/~harter/cs639/data/hdma-wi-2021.zip
+* https://pages.cs.wisc.edu/~harter/cs639/data/arid2017_to_lei_xref_csv.zip
+* https://pages.cs.wisc.edu/~harter/cs639/data/code_sheets.zip
 
-Download https://pages.cs.wisc.edu/~harter/cs639/data/ghcnd-stations.txt.
+Each zip contains one or more CSV files.  Upload each CSV to HDFS.
+You can use shell commands and/or Python code, but be sure to show
+your work in `p4.ipynb`.  Register or load the data into Spark.
 
-Use https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to understand the columns of `ghcnd-station.txt`.
+Requirements:
+* let Spark infer the schema
+* use Spark options/functions so that you can run the data setup code more than one, and it will simply replace previous data
+* **code_sheets.zip:** create these temporary views corresponding to the CSVs by the same name: "ethnicity", "race", "sex", "states", "counties", "tracts", "action_taken", "denial_reason", "loan_type", "loan_purpose", "preapproval", "property_type"
+* **arid2017_to_lei_xref_csv.zip:** load the data to a table named "banks"
+* **hdma-wi-2021.zip:** load the data to a table named "loans"
+* the "loans" table should be divide into 8 buckets by the `county_code` column
 
-Use Spark to parse the data and insert metadata for every station that belongs to Wisconsin `WI`
-(`id` and `name` columns only) into `weather.stations`.  Feel free to
-use `.collect()` on your Spark DataFrame and loop over the results,
-inserting one by one. Please make sure to verify your Spark DataFrame
-before inserting metatdata to Casssandra.
+#### Q1: what tables are in our warehouse?
 
-**Hint:** ghcnd-station.txt is difficult to work with because (a) it's not a CSV file and (b) it lacks a header row.  Based on the documentation, you'll need to hardcode some offsets to extract cells from each line.  We worked through a simple example with this file in lecture: https://github.com/cs544-wisc/s23/blob/main/lec/18-spark/nb/demo.ipynb
-
-#### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
-
-Use `check_output` to run `nodetool ring` and print the output.  Use
-the `token(????)` CQL function to get the token for the sensor.  Write
-some code to loop over the ring and find the correct vnode.
-
-Your output should be something like this (numbers may differ, of course):
+You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like this:
 
 ```
-row token:   -9014250178872933741
-vnode token: -8978105931410738024
++---------+-------------+-----------+
+|namespace|    tableName|isTemporary|
++---------+-------------+-----------+
+|  default|        banks|      false|
+|  default|        loans|      false|
+|         | action_taken|       true|
+|         |     counties|       true|
+|         |denial_reason|       true|
+|         |    ethnicity|       true|
+|         | loan_purpose|       true|
+|         |    loan_type|       true|
+|         |  preapproval|       true|
+|         |property_type|       true|
+|         |         race|       true|
+|         |          sex|       true|
+|         |       states|       true|
+|         |       tracts|       true|
++---------+-------------+-----------+
 ```
 
-## Part 2: Temperature Data
+## Part 2: Filter and Join
 
-### Server
+#### Q2: how many banks contain the word "first" in their name?  Which ones contain "second"?
 
-Now you'll write gRPC-based server.py file that receives temperature
-data and records it to `weather.stations`.  You could imagine various
-sensor devices acting as clients that make gRPC calls to `server.py`
-to record data, but for simplicity we'll make the client calls from
-`p5.ipynb`.
+Your filtering should be case insensative.  We're looking for a number
+for the first part and an actual listing for the second part.
 
-Save the following as `station.proto` and build it to get `station_pb2.py` and `station_pb2_grpc`:
+#### Q3: how many loan applications has your "favorite" bank received in the dataset?
 
-```
-syntax="proto3";
+Browse the dataset a bit and pick a "favorite" bank for these
+questions.  It could be one you use, or has an interesting name, or is
+popular in WI.  You need to pick one that has at least a couple
+hundred loans in the dataset
 
-service Station {
-        rpc RecordTemps(RecordTempsRequest) returns (RecordTempsReply) {}
-        rpc StationMax(StationMaxRequest) returns (StationMaxReply) {}
-}
+Use an `INNER JOIN` between `banks` and `loans` to anser this
+question.  `lei` in loans lets you identify the bank.  Filter on
+`respondent_name` (do NOT hardcode the LEI).
 
-message RecordTempsRequest {
-        string station = 1;
-        string date = 2;
-        int32 tmin = 3;
-        int32 tmax = 4;
-}
+#### Q4: what does `results.explain("formatted")` tell us about Spark's query plan for Q3?
 
-message RecordTempsReply {
-        string error = 1;
-}
+Show `results.explain("formatted")` and write a comment making observations about the following:
+1. which table is sent to every executor via a `BroadcastExchange` operation?
+2. on which tables is "is not null" filtering added by the optimizer?
+3. does the plan involve `HashAggregate`s (depending on how you write the query, it may or may not)?  If so, which ones?
 
-message StationMaxRequest {
-        string station = 1;
-}
+#### Q5: what are the top 10 biggest loans (in terms of `loan_amount`) that were approved by your favorite bank?
 
-message StationMaxReply {
-        int32 tmax = 1;
-        string error = 2;
-}
-```
+A loan is approved if `action_taken` is "Loan originated".  Your
+answer should have the following columns: census_tract, county,
+loan_purpose, derived_dwelling_category, thousands, interest_rate,
+years, action_taken
 
-In `server.py`, implement the interface from
-`station_pb2_grpc.StationServicer`.  RecordTemps will insert new
-temperature highs/lows to `weather.stations`.  `StationMax` will
-return the maximum `tmax` ever seen for the given station.
+Join with the appropriate views to get the values for these columns.
+It should look like the following (though will differ depending on
+which bank you picked):
 
-Each call should use a prepared statement to insert or access data in
-`weather.stations`.  It could be something like this:
+<img src="q5.png">
 
-```python
-insert_statement = cass.prepare("????")
-insert_statement.consistency_level = ConsistencyLevel.ONE
-max_statement = cass.prepare("????")
-max_statement.consistency_level = ????
-```
+Use `LEFT JOIN`s so that we don't ignore loans with missing values
+(for example, you can see some `None`s in the `loan_purpose` column of
+the example).
 
-Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high
-write availability.  The thought is that real sensors might not have
-much space to save old data that hasn't been uploaded, so we want to
-accept writes whenever possible.
+Joining `counties` will be a very tricky.  Tips:
 
-Choose R so that R + W > RF.  We want to avoid a situation where a
-`StationMax` returns a smaller temperature than one previously added
-with `RecordTemps`; it would be better to return an error message if
-necessary.
+* sometimes multiple rows in `counties` have the same `STATE, COUNTY, NAME` combination; eliminate duplicates before joining
+* `county_code` in `loans` is actually the state and county codes concatenated together whereas `counties` has these as separate columns.  For example, `55025` is the `county_code` for Dane county in loans, but this will show up as STATE=55 and COUNTY=25 in the `counties` view.  Be careful because counties have 3-digit codes (like `025`) but the `counties` view doesn't have leading zeros.
 
-If execute of either prepared statement raises a `ValueError` or
-`cassandra.Unavailable` exception, `server.py` should return a
-response with the `error` string set to something informative.
+## Part 3: GROUPY BY and Windowing
 
-Choose one of your three containers and start running `server.py`
-there, alongside one of the already-running Cassandra nodes.  You
-could choose one of the containers and do something like this:
+#### Q6: when computing a MEAN aggregate per group of loans, under what situation (when) do we require network I/O between the `partial_mean` and `mean` operations?
 
-```
-docker exec -it ???? python3 /notebooks/server.py
-```
+Write some simple `GROUP BY` queries on `loans` and call .explain().  Try grouping by both the `county_code` and `lei` columns.
 
-### Client
+If a network transfer (network I/O) is necessary for one query but not the other,
+write a comment explaining why.  You might want to look back at how
+you loaded the data to a Hive table earlier.
 
-Write a function `simulate_sensor(station)` that acts like a sensor,
-sending reporting temperature data to the server.  Use it to send data
-from 2022 for these stations: USW00014837, USR0000WDDG, USW00014898,
-USW00014839.  After the upload for each station, use `StationMax` to
-get and print the max temp for that station.
+#### Q7: what are the average interest rates for Wells Fargo applications for the ten counties where Wells Fargo receives the most applications?
 
-Write from scratch, or use the starter code if you like:
+Answer with a bar plot like this:
 
-```python
-import station_pb2_grpc, station_pb2, grpc
-channel = ????
-stub = ????
+<img src="q7.png" width=500>
 
-def simulate_sensor(station):
-    # TODO: loop over tmin/tmax data for every day of 2022 for the given station;
-    # send each to server with RecordTemps call
+The bars are sorted by the number of applications in each county (for
+example, most applications are in Milwaukee, Waukesha is second most,
+etc).
 
-for station in ["USW00014837", "USR0000WDDG", "USW00014898", "USW00014839"]:
-    simulate_sensor(station)
-    r = stub.StationMax(station_pb2.StationMaxRequest(station=station))
-    if r.error:
-        print(r.error)
-    else:
-        print(f"max temp for {station} is {r.tmax}")
+#### Q8: what is the second biggest loan application amount in each county?  (answer for top 10 counties).
+
+Note this this is computed over all loans, not just for one bank.
+
+Answer with a plot like the following:
+
+<img src="q8.png" width=500>
+
+Hint: if we were asking for the biggest in each county, you would use
+`GROUP BY` and `MAX`.  We're asking for the second biggest, so you
+should see if a windowing function can help.
+
+## Part 4: Caching
+
+Create a DataFrame from the following query:
+
+```sql
+SELECT interest_rate
+FROM banks
+INNER JOIN loans
+ON banks.lei_2020 = loans.lei 
+WHERE banks.respondent_name = 'Wells Fargo Bank, National Association'
 ```
 
-We've already downloaded data for all WI stations here for you:
-https://pages.cs.wisc.edu/~harter/cs639/data/wi-stations.zip.  You'll
-need to manipulate the data a bit to get TMIN and TMAX together for
-the same insert (each row contains one type of measurement, so a
-station's daily data is usually spread across multiple rows).
+#### Q9: what is the cost of caching and the impact on subsequent queries?
 
-You should have some prints like this:
+Write a loop that calls `.count()` on your DataFrame ten times.
+Measure the latency in milliseconds each time.  On the 5th time, cache
+the DataFrame.
 
-```
-max temp for USW00014837 is 356
-max temp for USR0000WDDG is 344
-max temp for USW00014898 is 356
-max temp for USW00014839 is 378
-```
+Answer with a scatter or line plot showing the latency of each query
+execution tha distinguishes between caching or not.  Here's one way to
+visualize it:
 
-## Part 3: Spark Analysis
+<img src="q9.png" width=500>
 
-Configured your Spark session so such that
-`spark.table("cassandra.weather.stations")` gives you access to the
-table in Cassandra.
+#### Q10: what is the impact of caching a single partition on load balance?
 
-Create a view called `weather2022` that contains all 2022 data from
-`cassandra.weather.stations`.
+Repartition your DataFrame to have 1 partition and cache it again.
+Write another loop that calls `.count()` ten times.
 
-Cache `weather2022`.
+After each query, use Spark's REST API to check how many tasks each executor has completed: https://spark.apache.org/docs/latest/monitoring.html#rest-api
 
-Register a UDF (user-defined function) that takes a TMIN or TMAX
-number and returns Fahrenheit.  Check
-https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to learn what
-the units are in by default.
+Make a plot like the following to show how much work each has completed:
 
-#### Q3: what were the daily highs and lows at Madison's airport in 2022?
+<img src="q10.png" width=500>
 
-Query `weather2022`, use your UDF, and create a plot like this:
-
-<img src="q3.png" width=600>
-
-This is station USW00014837.
-
-#### Q4: what is the correlation between maximum temperatures in Madison and Milwaukee?
-
-For Madison use USW00014837 and for Milwaukee use USW00014839.
-
-See https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.functions.corr.html.
-
-## Part 4: Disaster Strikes
-
-Before starting this part, manually kill one of your three containers
-(you can pick, but be sure not to disrupt `server.py` or your Jupyter
-notebook).
-
-#### Q5: does StationMax still work?
-
-Call `stub.StationMax(station_pb2.StationMaxRequest(station="USW00014837"))` to find out.
-
-#### Q6: does simulate_sensor still work?
-
-Try another station to find out:
-
-```python
-simulate_sensor("USC00477115")
-```
-
-#### Q7: how does refreshing the stale cache change the number of rows in weather2022?
-
-Print the count, refresh the cache, then print again.  It should be something like this:
-
-```
-BEFORE REFRESH: 1460
-AFTER REFRESH: 1825
-```
-
-Note that we're only counting regular rows of data (not per-partition
-data in partition keys and static columns), so you can use something
-`COUNT(record)` to only count rows where record is not NULL.
+Hints:
+* you can use `http://localhost:4040/api/v1/applications` to find your app's ID
+* you can use `http://localhost:4040/api/v1/applications/{app_id}/executors` to find stats about executors for your app
+* a correct experiment should show one executor always does the work (whichever one is caching the partition).  Results may vary in terms of which of the two executors do the work or initial  counts prior to the start of the experiment
 
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker build -t p5-image ./image
-docker compose up
-```
-
-We should be able to start Jupyter and your server like this:
-
-```
-docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
-```
-
-AND
-
-```
-docker exec -it ???? python3 /notebooks/server.py
+docker build -t p4-image ./image
+docker compose up -d
 ```
 
 We should then be able to open `http://localhost:5000/lab`, find your
@@ -345,12 +248,12 @@ changes if we overlooked an important part of the specification or did
 not consider a common mistake.
 
 1. [x/1] question 1 (part 1)
-2. [x/1] question 2 (part 1)
-3. [x/1] **server** (part 2)
-4. [x/1] **client** (part 2)
-5. [x/1] **view/caching/UDF** (part 3)
-6. [x/1] question 3 (part 3)
-7. [x/1] question 4 (part 3)
-8. [x/1] question 5 (part 4)
-9. [x/1] question 6 (part 4)
-10. [x/1] question 7 (part 4)
+2. [x/1] question 2 (part 2)
+3. [x/1] question 3 (part 2)
+4. [x/1] question 4 (part 2)
+5. [x/1] question 5 (part 2)
+6. [x/1] question 6 (part 3)
+7. [x/1] question 7 (part 3)
+8. [x/1] question 8 (part 3)
+9. [x/1] question 9 (part 4)
+10. [x/1] question 10 (part 4)
