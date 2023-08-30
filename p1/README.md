@@ -7,7 +7,10 @@
 TODO
 
 Learning objectives:
-* TODO
+* deploy a virtual machine in the cloud
+* follow a complicated series of steps to install Docker
+* write a shell script to automate several bash commands
+* bundle a shell script up as a Docker image/container
 
 Before starting, please review the [general project directions](../projects.md).
 
@@ -37,6 +40,14 @@ nearby), but here are some highlights:
 * you may have modified firewall settings for other courses, but that's not necessary for 544
 * you'll need to setup an SSH key so you can connect from your laptop: https://console.cloud.google.com/compute/metadata?tab=sshkeys (the browser-based SSH client won't work for what we need to do in this class)
 
+When you're done, check that you have the correct Operating System and
+CPU with `cat /etc/os-release` and `lscpu`.  Save the outputs to hand in too:
+
+```
+cat /etc/os-release > os.txt
+lscpu > cpu.txt
+```
+
 ## Part 2: Docker Install
 
 Carefully follow the directions here to install Docker 24.0.5 on your virtual machine: https://docs.docker.com/engine/install/ubuntu/
@@ -46,14 +57,46 @@ Notes:
 * the first step under "Install Docker Engine" has two options: "Latest" or "Specific version".  Choose **"Specific version"**
 * we'll use version `5:24.0.5-1~ubuntu.22.04~jammy` -- be sure to modify the `VERSION_STRING` accordingly!
 
+To avoid needing to run every Docker command with root, there are a
+few more steps you can do here:
+https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user
+(don't go beyond the "Manage Docker as a non-root user" section).
+
+Create some more files so we can check your Docker install:
+
+```
+docker version > docker.txt
+docker compose version > compose.txt
+```
+
 ## Part 3: Shell Script
+
+This zip file contains a CSV file with data about loan applications in
+WI: https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip.
+
+Try running some shell commands to download the zip, extract the
+contents, and count how many lines contain the text "Multifamily".
+
+Now, combine these commands in a `count.sh` file; the script should
+have a shebang line so that it runs with with `bash`.
 
 ## Part 4: Docker Image
 
+Create a `Dockerfile` that starts from a base image of your choosing
+and includes your `count.sh` file.  The Dockerfile should do any
+installs needed for your script to run.
 
+You should be able to create an image and container like this:
+
+```
+docker build . -t p1
+docker run p1
+```
+
+It's OK if there's extra output besides the actual count.
 
 ## Submission
 
-TODO
+
 
 ## Tester
