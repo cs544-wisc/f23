@@ -1,10 +1,13 @@
-# DRAFT!  Don't start yet.
-
-# P1 (6% of grade): Docker/Linux Warmup
+# P1 (6% of grade): Counting Loans with Dockerized Shell Script
 
 ## Overview
 
-TODO
+In this project, you'll setup your programming environment for the
+first part of the semester (virtual machine, Docker).  You'll practice
+writing some shell commands to download a zipped file and search
+(grep) through its contents.  You'll automate these steps with a shell
+script.  The shell script may depend on other programs (like `unzip`),
+so you'll deploy it as a Docker image with the necessary installs.
 
 Learning objectives:
 * deploy a virtual machine in the cloud
@@ -22,7 +25,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 We'll use Google's Cloud (GCP) for our virtual machines.  They've
 generously given each 544 student $100 in credits, which should last
-the whole semseter if you stick to the [budget
+the whole semester if you stick to the [budget
 plan](https://github.com/cs544-wisc/f23/blob/main/projects.md#compute-setup).
 
 Setup a virtual machine that you'll use for the first few projects
@@ -97,6 +100,17 @@ It's OK if there's extra output besides the actual count.
 
 ## Submission
 
+At a minimum, your submission repo (watch for an announcement on how
+to set this up) should contain the following: `os.txt`, `cpu.txt`,
+`docker.txt`, `compose.txt`, `count.sh`, `Dockerfile`.
 
+If you worked with a partner, there should only be one submission
+repo, with at least one commit by each partner.
 
 ## Tester
+
+Run `python3 autograde.py` to test your work and environment setup.
+This will probably be your grade, but autograders are imperfect, so we
+reserve the right to deduct further points.  Some cases are when
+students achieve the correct output by hardcoding, or not using an
+approach we specifically requested.
