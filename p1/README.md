@@ -44,7 +44,7 @@ Carefully follow the directions here to install Docker 24.0.5 on your virtual ma
 Notes:
 * there are several different approaches described under "Installation methods".  Use the directions under "Install using the apt repository".  Make sure you don't keep going after you reach "Install from a package"
 * the first step under "Install Docker Engine" has two options: "Latest" or "Specific version".  Choose **"Specific version"**
-* we'll use version "5:24.0.5-1~ubuntu.22.04~jammy" -- be sure to modify the `VERSION_STRING` accordingly!
+* we'll use version `5:24.0.5-1~ubuntu.22.04~jammy` -- be sure to modify the `VERSION_STRING` accordingly!
 
 ## Part 3: Shell Script
 
