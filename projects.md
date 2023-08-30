@@ -36,13 +36,15 @@ sharing $100 of credit per student.  Some notes about how to manage this credit:
 
 Here is a plan/budget for what VM you should have at each point during the semester:
 
-https://docs.google.com/spreadsheets/d/1wSURq5fH5CkUKFLk1MijVMiIbCdUSJbvt0OPx_JfCCc/edit?usp=sharing
+https://docs.google.com/spreadsheets/d/1HJyhyju6JB_hzynsjh1SOnczpCDCrO81hbgdn3lekYs/edit#gid=0
 
 Please monitor your credits carefully.  If you're burning through credits faster than the schedule, it is your responsibility to conserve credits (for example, by shutting down your VM overnight).
 
 Your VMs should always run the Ubuntu 22.04 LTS (be sure it is the "x86/64" option).  Here are versions for the software we'll use this semester:
 
-TODO
+* Ubuntu 22.04
+* Docker 24.0.5
+* *more details soon*
 
 Be sure to backup your work regularly to a private GitHub repo, or with an `scp` to your personal computer.
 
