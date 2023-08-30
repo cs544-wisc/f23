@@ -28,6 +28,8 @@ generously given each 544 student $100 in credits, which should last
 the whole semester if you stick to the [budget
 plan](https://github.com/cs544-wisc/f23/blob/main/projects.md#compute-setup).
 
+You can obtain the credits here: https://canvas.wisc.edu/courses/374194/pages/google-credits.
+
 Setup a virtual machine that you'll use for the first few projects
 (we'll eventually delete it and create a more powerful one for some of
 the later projects).
