@@ -43,7 +43,7 @@ Use `docker ps` to see which container is using host port
 127.0.0.1:5000, then manually start Jupyter inside that container:
 
 ```
-docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
+docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --notebook-dir notebooks  --NotebookApp.token='' --allow-root
 ```
 
 Create a `p5.ipynb` notebook for your work inside the `notebooks`
@@ -107,7 +107,7 @@ connecting to a Spark cluster so we won't have multiple workers.
 Tasks will be executed directly by the driver.  Also note that we're
 including the Spark/Cassandra connector extension.
 
-Download https://pages.cs.wisc.edu/~harter/cs639/data/ghcnd-stations.txt.
+Download https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt.
 
 Use https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to understand the columns of `ghcnd-station.txt`.
 
@@ -239,7 +239,7 @@ for station in ["USW00014837", "USR0000WDDG", "USW00014898", "USW00014839"]:
 ```
 
 We've already downloaded data for all WI stations here for you:
-https://pages.cs.wisc.edu/~harter/cs639/data/wi-stations.zip.  You'll
+https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations.zip.  You'll
 need to manipulate the data a bit to get TMIN and TMAX together for
 the same insert (each row contains one type of measurement, so a
 station's daily data is usually spread across multiple rows).
