@@ -82,7 +82,7 @@ This zip file contains a CSV file with data about loan applications in
 WI: https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip.
 
 Try running some shell commands to download the zip, extract the
-contents, and count how many lines contain the text "Multifamily".
+contents, and count how many lines contain the text "Multifamily" (case sensitive).
 
 Now, combine these commands in a `count.sh` file; the script should
 have a shebang line so that it runs with with `bash`.
