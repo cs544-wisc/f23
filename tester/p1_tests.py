@@ -60,5 +60,4 @@ def run_test():
     return "did not find 2493 in output of Docker container"
 
 if __name__ == "__main__":
-    # main()
     tester_main()
