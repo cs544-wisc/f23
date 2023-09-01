@@ -1,6 +1,8 @@
 import json, argparse
 import os, traceback, shutil
 
+import multiprocessing
+
 VERBOSE = False
 
 TMP_DIR = "/tmp/_cs544_tester_directory"
@@ -10,17 +12,32 @@ TEST_DIR = None
 TESTS = {}
 
 # dataclass for storing test object info
-class _test_data:
+class _unit_test():
     def __init__(self, func, points, timeout, desc):
         self.func = func
         self.points = points
         self.timeout = timeout
         self.desc = desc
 
+    def run(self, ret):
+        points = 0
+
+        try:
+            result = self.func()
+            if not result:
+                points = self.points
+                result = f"PASS ({self.points}/{self.points})"
+        except Exception as e:
+            result = traceback.format_exception(e)
+            print(f"Exception in {self.func.__name__}:\n")
+            print("\n".join(self.result) + "\n")
+
+        ret.send((points, result))
+
 # test annotator
-def test(points, timeout=0, desc=""):
+def test(points, timeout=None, desc=""):
     def wrapper(test_func):
-        TESTS[test_func.__name__] = _test_data(test_func, points, timeout, desc)
+        TESTS[test_func.__name__] = _unit_test(test_func, points, timeout, desc)
     return wrapper
 
 # lists all tests
@@ -41,19 +58,19 @@ def run_tests():
     }
 
     for test_name, test in TESTS.items():
-        points = 0
         results["full_score"] += test.points
 
-        try:
-            result = test.func()
-            if not result:
-                points = test.points
-                result = f"PASS ({points}/{test.points})"
-        except Exception as e:
-            result = traceback.format_exception(e)
-            print(f"Exception in {test_name}:\n")
-            print("\n".join(result) + "\n")
-
+        ret_send, ret_recv = multiprocessing.Pipe()
+        proc = multiprocessing.Process(target=test.run, args=(ret_send, ))
+        proc.start()
+        proc.join(test.timeout)
+        if proc.is_alive():
+            proc.terminate()
+            points = 0
+            result = "Timeout"
+        else:
+            (points, result) = ret_recv.recv()
+            
         results["score"] += points
         results[test_name] = result
 
