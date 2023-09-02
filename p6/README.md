@@ -2,6 +2,10 @@
 
 # P6 (6% of grade): Cassandra, Weather Data
 
+## Running the autograder
+
+You can run the autograder by running the command `autograder_scripts/autograder.py` from the `p6` directory.
+
 ## Overview
 
 NOAA (National Oceanic and Atmospheric Administration) collects
