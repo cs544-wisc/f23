@@ -9,7 +9,9 @@ TMP_DIR = "/tmp/_cs544_tester_directory"
 TEST_DIR = None
 
 # full list of tests
+INIT = None
 TESTS = {}
+CLEANUP = None
 
 # dataclass for storing test object info
 class _unit_test():
@@ -30,15 +32,25 @@ class _unit_test():
         except Exception as e:
             result = traceback.format_exception(e)
             print(f"Exception in {self.func.__name__}:\n")
-            print("\n".join(self.result) + "\n")
+            print("\n".join(result) + "\n")
 
         ret.send((points, result))
+
+# init annotator
+def init(init_func):
+    global INIT
+    INIT = init_func
 
 # test annotator
 def test(points, timeout=None, desc=""):
     def wrapper(test_func):
         TESTS[test_func.__name__] = _unit_test(test_func, points, timeout, desc)
     return wrapper
+
+# cleanup annotator
+def cleanup(cleanup_func):
+    global CLEANUP
+    CLEANUP = cleanup_func
 
 # lists all tests
 def list_tests():
@@ -107,5 +119,14 @@ def tester_main():
         return
     TEST_DIR = os.path.abspath(test_dir)
 
+    # run init
+    if INIT:
+        INIT()
+    
+    # run tests
     results = run_tests()
     save_results(results)
+
+    # run cleanup
+    if CLEANUP:
+        CLEANUP()

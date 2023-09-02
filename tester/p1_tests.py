@@ -1,7 +1,17 @@
 from subprocess import check_output
 import os
 
-from tester import test, tester_main
+from tester import init, test, cleanup, tester_main
+
+@init
+def init():
+    os.system("docker rmi -f p1")
+    os.system("docker container rm p1_tester")
+    
+@cleanup
+def cleanup():
+    os.system("docker rmi -f p1")
+    os.system("docker container rm p1_tester")
 
 @test(points = 15, timeout = 10)
 def os_test():
@@ -54,7 +64,7 @@ def build_test():
 
 @test(points = 15)
 def run_test():
-    out = check_output(["docker", "run", "p1"])
+    out = check_output(["docker", "run", "--name", "p1_tester", "p1"])
     if "2493" in str(out, "utf-8"):
         return None
     return "did not find 2493 in output of Docker container"
