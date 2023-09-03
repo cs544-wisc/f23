@@ -222,7 +222,7 @@ Verify your implementation by running the cell with the comment "Weather2022 ver
 
 Madison airport has a station id of USW00014837. Using this information, `weather2022` and your UDF generate the following plot:
 
-<img src="q3.png" width=600>
+<img src="images/q3.png" width=600>
 
 Write your code in the cell with the comment "TODO: Q3. 
 
