@@ -100,9 +100,10 @@ root
  |-- WMO ID: string (nullable = true)
 ``` 
 
-Now use Spark to insert the `ID` and `NAME` metadata of every station that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra.
+Now use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra.
 
 #### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
+
 
 Use `check_output` to run `nodetool ring` and print the output.  Use
 the `token(????)` CQL function to get the token for the sensor.  Write
