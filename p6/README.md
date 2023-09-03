@@ -65,7 +65,7 @@ Additionally, it sets up a cluster that will connect to the three nodes as well 
 
 ## Part 1: Station Metadata
 
-The first thing you need to do is implement the `setup_cassandra_table` function which should do the following:
+The first thing you need to do is implement the `setup_cassandra_table` (which you can find by searching `TODO: Q1`) function which should do the following:
 * drop a `weather` keyspace if it already exists
 * create a `weather` keyspace with 3x replication
 * inside `weather`, create a `station_record` type containing two ints: `tmin` and `tmax`
@@ -78,24 +78,29 @@ The first thing you need to do is implement the `setup_cassandra_table` function
 
 #### Q1: what is the schema?
 
-Next run the cell with the `# Q1` comment which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
+Next run the cell with the `# Q1 Ans` comment which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
 
 #### Station Metadata
 
 The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not
 connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
 
-Download https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt.
+The next we have to do is read the `stations_metadata.csv` file. The starter code alreadys provides you the code to read this file into a Spark table. Note that the table
+has the following schema:
+```
+root
+ |-- ID: string (nullable = true)
+ |-- LATITUDE: string (nullable = true)
+ |-- LONGITUDE: string (nullable = true)
+ |-- ELEVATION: string (nullable = true)
+ |-- STATE: string (nullable = true)
+ |-- NAME: string (nullable = true)
+ |-- GSN FLAG: string (nullable = true)
+ |-- HCN/CRN FLAG: string (nullable = true)
+ |-- WMO ID: string (nullable = true)
+``` 
 
-Use https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to understand the columns of `ghcnd-station.txt`.
-
-Use Spark to parse the data and insert metadata for every station that belongs to Wisconsin `WI`
-(`id` and `name` columns only) into `weather.stations`.  Feel free to
-use `.collect()` on your Spark DataFrame and loop over the results,
-inserting one by one. Please make sure to verify your Spark DataFrame
-before inserting metatdata to Casssandra.
-
-**Hint:** ghcnd-station.txt is difficult to work with because (a) it's not a CSV file and (b) it lacks a header row.  Based on the documentation, you'll need to hardcode some offsets to extract cells from each line.  We worked through a simple example with this file in lecture: https://github.com/cs544-wisc/s23/blob/main/lec/18-spark/nb/demo.ipynb
+Now use Spark to insert the `ID` and `NAME` metadata of every station that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra.
 
 #### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
 
