@@ -41,7 +41,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Setup
 
-We have provided you a Docker compose file that launches three cassandra nodes. You can start up these nodes by making sure you are in the `p6` direcotry and then running `docker-compose up -d`. 
+We have provided you a Docker compose file that launches three cassandra nodes. You can start up these nodes by making sure you are in the `p6` direcotry and then running `docker-compose up -d`. Note that you need to wait about 15 to 20 seconds after spinning up the containers before you can connect to the cluster.
 
 Next run `docker ps` which will produce an output like this:
 ```
@@ -80,7 +80,7 @@ The first thing you need to do is implement the `setup_cassandra_table` (which y
 
 Next run the cell with the `# Q1 Ans` comment which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
 
-#### Station Metadata
+### Adding metadata to table
 
 The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not
 connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
@@ -100,34 +100,33 @@ root
  |-- WMO ID: string (nullable = true)
 ``` 
 
-Now use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra.
+Now use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra and that you write your code in the cell with the comment `TODO: Code to insert metadata into weather.stations`.
+
+You can verify that you performed the above task correctly by running the cell containing the comment `Metadata insert verify` and ensuring that it prints out `1313`.
 
 #### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
 
+You will answer this question by implementing the `get_tokens` function (which has the comment `TODO: Q2`) which takens in a `station_id` and returns two values:
+* `row_token` : The token associated with the given `station_id`. You can use the `token(????)` CQL function in order to calculate this value
+* `vnode_token` : The token of the vnode that comes after the partition for the provided `station_id`. You can use [subprocess.run](https://docs.python.org/3/library/subprocess.html#using-the-subprocess-module) to run `nodetool ring`. Then write some code to parse the output, loop over the ring and find the correct vnode. 
 
-Use `check_output` to run `nodetool ring` and print the output.  Use
-the `token(????)` CQL function to get the token for the sensor.  Write
-some code to loop over the ring and find the correct vnode.
-
-Your output should be something like this (numbers may differ, of course):
-
+Verify your code by running the cell with the comment `Q2 Ans` which should output something like this (numbers may differ, of course):
 ```
-row token:   -9014250178872933741
-vnode token: -8978105931410738024
+Row token: -9014250178872933741
+Vnode token: -8978105931410738024
 ```
+
+**Finally, make sure you run the cell containing spark.stop() before the P2 header.**
 
 ## Part 2: Temperature Data
 
 ### Server
 
-Now you'll write gRPC-based server.py file that receives temperature
-data and records it to `weather.stations`.  You could imagine various
-sensor devices acting as clients that make gRPC calls to `server.py`
-to record data, but for simplicity we'll make the client calls from
-`p5.ipynb`.
+Now you'll write gRPC-based server.py file that receives temperature data and records it to `weather.stations`.  You could imagine various
+sensor devices acting as clients that make gRPC calls to `server.py` to record data, but for simplicity we'll make the client calls from
+`p6.ipynb`.
 
-Save the following as `station.proto` and build it to get `station_pb2.py` and `station_pb2_grpc`:
-
+In the starter code, we provide with the following proto file in `nb/station.proto`:
 ```
 syntax="proto3";
 
@@ -157,14 +156,12 @@ message StationMaxReply {
 }
 ```
 
-In `server.py`, implement the interface from
-`station_pb2_grpc.StationServicer`.  RecordTemps will insert new
-temperature highs/lows to `weather.stations`.  `StationMax` will
-return the maximum `tmax` ever seen for the given station.
+We have already built the proto file and also provide you with `station_pb2_grpc.py` and `station_pb2.py` files as well. 
 
-Each call should use a prepared statement to insert or access data in
-`weather.stations`.  It could be something like this:
+In `server.py`, implement the interface from `station_pb2_grpc.StationServicer`.  RecordTemps will insert new temperature 
+highs/lows to `weather.stations`.  `StationMax` will return the maximum `tmax` ever seen for the given station.
 
+Each call should use a prepared statement to insert or access data in `weather.stations`.  It could be something like this:
 ```python
 insert_statement = cass.prepare("????")
 insert_statement.consistency_level = ConsistencyLevel.ONE
@@ -172,29 +169,29 @@ max_statement = cass.prepare("????")
 max_statement.consistency_level = ????
 ```
 
-Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high
-write availability.  The thought is that real sensors might not have
-much space to save old data that hasn't been uploaded, so we want to
-accept writes whenever possible.
+Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high write availability.  The thought is that real sensors might not have
+much space to save old data that hasn't been uploaded, so we want to accept writes whenever possible.
 
-Choose R so that R + W > RF.  We want to avoid a situation where a
-`StationMax` returns a smaller temperature than one previously added
-with `RecordTemps`; it would be better to return an error message if
-necessary.
+Choose R so that R + W > RF.  We want to avoid a situation where a `StationMax` returns a smaller temperature than one previously added
+with `RecordTemps`; it would be better to return an error message if necessary.
 
-If execute of either prepared statement raises a `ValueError` or
-`cassandra.Unavailable` exception, `server.py` should return a
+If execute of either prepared statement raises a `ValueError` or `cassandra.Unavailable` exception, `server.py` should return a
 response with the `error` string set to something informative.
 
-Choose one of your three containers and start running `server.py`
-there, alongside one of the already-running Cassandra nodes.  You
-could choose one of the containers and do something like this:
-
+Making sure to save your `server.py`, startup the server by running the command:
 ```
-docker exec -it ???? python3 /notebooks/server.py
+docker exec -it <main_container> python3 /notebooks/server.py
 ```
 
 ### Client
+
+Once the server is running, we will connect to from our juypter notebook. In Part 2 of the notebook, fill out the cell with the comment
+`Connect to the server` to create the client and the stub. 
+
+Then implement the `simulate_sensor` function (having comment `TODO: gRPC client simulation`) which takes in a `sensor_id` and then sends
+data from that sensor to the server. You can find the temperature data for all of the sensors `/datasets/station_temp_data.csv` and it is a CSV file having
+4 columns: [`station_id`, `date`, `type`, `value`]. The `type` field specifies what kinda of data it is: `TMIN` (Min temperature) or `TMAX` (Max temperature). 
+Your implementation should ensure that for a given `sensor_id`, it should only record data for days for which we have both the `TMIN` and `TMAX` values. 
 
 Write a function `simulate_sensor(station)` that acts like a sensor,
 sending reporting temperature data to the server.  Use it to send data
