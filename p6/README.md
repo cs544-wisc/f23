@@ -22,7 +22,6 @@ results).
 
 Learning objectives:
 * create a schema for a Cassandra table that uses a partition key, cluster key, and static column
-* configure Spark catalogs to gain access to external data sources
 * create custom Cassandra types
 * create custom Spark UDFs (user defined functions)
 * configure queries to tradeoff read/write availability
@@ -58,14 +57,13 @@ Then manually start Jupyter inside the main container using the command:
 ```
 docker exec -it -d <main_container> python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --notebook-dir notebooks  --NotebookApp.token='' --allow-root
 ```
-This command exposes the jupyterlab server from the <main_container> to your host VM and you can connect to the server using `http://localhost:5000` on your host VM. 
+After running this command, you should then be able to open `http://localhost:5000/lab`, find your notebook, and run it.
 
-Note that a `p6.ipynb` containing a starting template has already been provided to you. The starter code specifies all the imports you will likely need to complete this project but feel free add more imports if necessary. Next the 
-Additionally, it sets up a cluster that will connect to the three nodes as well as spark session you can use.
+Note that a `p6.ipynb` containing a starting template has already been provided to you. The starter code specifies all the imports you will likely need to complete this project but feel free add more imports if necessary. Additionally, it sets up a cluster that will connect to the three nodes as well as spark session you can use.
 
 ## Part 1: Station Metadata
 
-The first thing you need to do is implement the `setup_cassandra_table` (which you can find by searching `TODO: Q1`) function which should do the following:
+The first thing you need to do is implement the `setup_cassandra_table` (which has the comment "TODO: Q1") function which should do the following:
 * drop a `weather` keyspace if it already exists
 * create a `weather` keyspace with 3x replication
 * inside `weather`, create a `station_record` type containing two ints: `tmin` and `tmax`
@@ -78,7 +76,7 @@ The first thing you need to do is implement the `setup_cassandra_table` (which y
 
 #### Q1: what is the schema?
 
-Next run the cell with the `# Q1 Ans` comment which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
+Next run the cell with the comment "Q1 Ans" which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
 
 ### Adding metadata to table
 
@@ -100,17 +98,17 @@ root
  |-- WMO ID: string (nullable = true)
 ``` 
 
-Now use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra and that you write your code in the cell with the comment `TODO: Code to insert metadata into weather.stations`.
+Now use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra and that you write your code in the cell with the comment "TODO: Code to insert metadata into weather.stations".
 
-You can verify that you performed the above task correctly by running the cell containing the comment `Metadata insert verify` and ensuring that it prints out `1313`.
+You can verify that you performed the above task correctly by running the cell containing the comment "Metadata insert verify" and ensuring that it prints out `1313`.
 
 #### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
 
-You will answer this question by implementing the `get_tokens` function (which has the comment `TODO: Q2`) which takens in a `station_id` and returns two values:
+You will answer this question by implementing the `get_tokens` function (which has the comment "TODO: Q2") which takens in a `station_id` and returns two values:
 * `row_token` : The token associated with the given `station_id`. You can use the `token(????)` CQL function in order to calculate this value
 * `vnode_token` : The token of the vnode that comes after the partition for the provided `station_id`. You can use [subprocess.run](https://docs.python.org/3/library/subprocess.html#using-the-subprocess-module) to run `nodetool ring`. Then write some code to parse the output, loop over the ring and find the correct vnode. 
 
-Verify your code by running the cell with the comment `Q2 Ans` which should output something like this (numbers may differ, of course):
+Verify your code by running the cell with the comment "Q2 Ans" which should output something like this (numbers may differ):
 ```
 Row token: -9014250178872933741
 Vnode token: -8978105931410738024
@@ -186,47 +184,15 @@ docker exec -it <main_container> python3 /notebooks/server.py
 ### Client
 
 Once the server is running, we will connect to from our juypter notebook. In Part 2 of the notebook, fill out the cell with the comment
-`Connect to the server` to create the client and the stub. 
+"Connect to the server" to create the client and the stub. 
 
-Then implement the `simulate_sensor` function (having comment `TODO: gRPC client simulation`) which takes in a `sensor_id` and then sends
+Then implement the `simulate_sensor` function (having comment "TODO: gRPC client simulation") which takes in a `sensor_id` and then sends
 data from that sensor to the server. You can find the temperature data for all of the sensors `/datasets/station_temp_data.csv` and it is a CSV file having
 4 columns: [`station_id`, `date`, `type`, `value`]. The `type` field specifies what kinda of data it is: `TMIN` (Min temperature) or `TMAX` (Max temperature). 
-Your implementation should ensure that for a given `sensor_id`, it should only record data for days for which we have both the `TMIN` and `TMAX` values. 
+Your implementation should ensure that for a given `sensor_id`, it should only record data for days for which we have both the `TMIN` and `TMAX` values. The
+function should return the number of dates for which the `stub.RecordTemps` call returned an error. 
 
-Write a function `simulate_sensor(station)` that acts like a sensor,
-sending reporting temperature data to the server.  Use it to send data
-from 2022 for these stations: USW00014837, USR0000WDDG, USW00014898,
-USW00014839.  After the upload for each station, use `StationMax` to
-get and print the max temp for that station.
-
-Write from scratch, or use the starter code if you like:
-
-```python
-import station_pb2_grpc, station_pb2, grpc
-channel = ????
-stub = ????
-
-def simulate_sensor(station):
-    # TODO: loop over tmin/tmax data for every day of 2022 for the given station;
-    # send each to server with RecordTemps call
-
-for station in ["USW00014837", "USR0000WDDG", "USW00014898", "USW00014839"]:
-    simulate_sensor(station)
-    r = stub.StationMax(station_pb2.StationMaxRequest(station=station))
-    if r.error:
-        print(r.error)
-    else:
-        print(f"max temp for {station} is {r.tmax}")
-```
-
-We've already downloaded data for all WI stations here for you:
-https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations.zip.  You'll
-need to manipulate the data a bit to get TMIN and TMAX together for
-the same insert (each row contains one type of measurement, so a
-station's daily data is usually spread across multiple rows).
-
-You should have some prints like this:
-
+To verify your implementation, run the cell having the comment "gRPC client runner" and ensure that produces the following output:
 ```
 max temp for USW00014837 is 356
 max temp for USR0000WDDG is 344
@@ -236,72 +202,67 @@ max temp for USW00014839 is 378
 
 ## Part 3: Spark Analysis
 
-Configured your Spark session so such that
-`spark.table("cassandra.weather.stations")` gives you access to the
-table in Cassandra.
+Next we are going to be configuring our spark session such that we have access to the table in Cassandra. The starter code already includes code to create a spark session capable of connecting to the cassandra nodes as well as code to read the table using the session. You can find this code in the cell after the Part 3 header. 
 
-Create a view called `weather2022` that contains all 2022 data from
-`cassandra.weather.stations`.
+Next implement the function `create_weather_view` (having comment "Initialize the weather2022 view") which should do the following:
+* Create a view called `weather2022` that contains all 2022 data from `cassandra.weather.stations`.
+* Cache `weather2022`.
+* Register a UDF (user-defined function) that takes a TMIN or TMAX number and returns the temperature the Farheneith. Note that the default unit of temperature of a TMIN or TMAX number is tenth of a degree (i.e. if we have a TMAX of `1` that is equivalent to `10 °C`). 
 
-Cache `weather2022`.
-
-Register a UDF (user-defined function) that takes a TMIN or TMAX
-number and returns Fahrenheit.  Check
-https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to learn what
-the units are in by default.
+Verify your implementation by running the cell with the comment "Weather2022 verify" and ensuring that it produces the following output:
+```
++---------+-----------+-----------+
+|namespace|  tableName|isTemporary|
++---------+-----------+-----------+
+|         |weather2022|       true|
++---------+-----------+-----------+
+```
 
 #### Q3: what were the daily highs and lows at Madison's airport in 2022?
 
-Query `weather2022`, use your UDF, and create a plot like this:
+Madison airport has a station id of USW00014837. Using this information, `weather2022` and your UDF generate the following plot:
 
 <img src="q3.png" width=600>
 
-This is station USW00014837.
+Write your code in the cell with the comment "TODO: Q3. 
+
 
 #### Q4: what is the correlation between maximum temperatures in Madison and Milwaukee?
 
-For Madison use USW00014837 and for Milwaukee use USW00014839.
-
-See https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.functions.corr.html.
+Use station id of USW00014837 for Madison and USW00014839 for Milwauke. Checkout the [coor function](https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.functions.corr.html) provided by pyspark, which has already been imported for you. Write your code in the cell with the comment "TODO: Q4" and ensure that prints out the coorelation rounded to 2 decimal places. The output of running the cell should be something like this (number might be different):
+```
+Coorelation of 0.21
+```
 
 ## Part 4: Disaster Strikes
 
-Before starting this part, manually kill one of your three containers
-(you can pick, but be sure not to disrupt `server.py` or your Jupyter
-notebook).
+Before starting this part, kill off one of the containers that is not the `<main_container>` using `docker kill`. 
 
 #### Q5: does StationMax still work?
 
-Call `stub.StationMax(station_pb2.StationMaxRequest(station="USW00014837"))` to find out.
+Try to get the maximum for station USW00014837 using your gRPC stub. Print out "StationMax returned <some_val> for USW00014837" if StationMax works or "StationMax call for USW00014837 returned error: <error_msg>" if it doesn't. In the previous sentence, <some_val> represents the max temperature returned by gRPC call and <error_msg> represents the error returned by the gRPC call. Write your code in the cell with the comment "TODO: Q5". 
 
 #### Q6: does simulate_sensor still work?
 
-Try another station to find out:
-
-```python
-simulate_sensor("USC00477115")
-```
+Try to add data for sensor USC00477115 using the `simulate_sensor` function. Record the response of the function call by printing out "Failed to write data for <num_errors> date(s) of USC00477115" where <num_errors> is the value returned by simulate_sensor. Write your code in the cell with the comment "TODO: Q6". 
 
 #### Q7: how does refreshing the stale cache change the number of rows in weather2022?
 
-Print the count, refresh the cache, then print again.  It should be something like this:
-
+Print the number of rows in weather2022, refresh the cache, then print the count again. Your output should look like:
 ```
-BEFORE REFRESH: 1460
-AFTER REFRESH: 1825
+Before refresh: 1460
+After refresh: 1825
 ```
 
-Note that we're only counting regular rows of data (not per-partition
-data in partition keys and static columns), so you can use something
-`COUNT(record)` to only count rows where record is not NULL.
+Note that we're only counting regular rows of data (not per-partition data in partition keys and static columns), so you can use something
+`COUNT(record)` to only count rows where record is not NULL. Write your code in the cell with the comment "TODO: Q7"
 
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker build -t p5-image ./image
-docker compose up
+docker-compose up
 ```
 
 We should be able to start Jupyter and your server like this:
@@ -316,8 +277,7 @@ AND
 docker exec -it ???? python3 /notebooks/server.py
 ```
 
-We should then be able to open `http://localhost:5000/lab`, find your
-notebook, and run it.
+We should then be able to open `http://localhost:5000/lab`, find your notebook, and run it.
 
 ## Approximate Rubric:
 
