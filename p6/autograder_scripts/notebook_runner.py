@@ -10,13 +10,6 @@ class Part1Executor(ExecutePreprocessor):
         self.valid_ranges.sort(key = lambda x : x[0])
     
     def preprocess_cell(self, cell, resources, cell_index):
-        """
-        Executes a single code cell. See base.py for details.
-        To execute all cells see :meth:`preprocess`.
-
-        Checks cell.metadata for 'execute' key. If set, and maps to False, 
-          the cell is not executed.
-        """
         should_execute_cell = False
         for range in self.valid_ranges:
             if cell_index >= range[0] and cell_index <= range[1]:

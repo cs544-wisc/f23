@@ -11,7 +11,9 @@ You can run the autograder by running the command `autograder_scripts/autograder
 NOAA (National Oceanic and Atmospheric Administration) collects
 weather data from all over the world.  In this project, you'll explore
 how you could (1) store this data in Cassandra, (2) write a server for
-data collection, and (3) analyze the collected data via Spark.
+data collection, and (3) analyze the collected data via Spark. You can
+find the datasets we are going to be using in the `datasets` directory
+of `p6`. 
 
 We'll also explore read/write availability tradeoffs.  When always
 want sensors to be able to upload data, but it is OK if we cannot
@@ -37,39 +39,34 @@ Before starting, please review the [general project directions](../projects.md).
 * Apr 11: updated examples to have server.py in "notebooks" (instead of "share")
 * Apr 12: added clarification about counts in q7
 
+## Setup
+
+We have provided you a Docker compose file that launches three cassandra nodes. You can start up these nodes by making sure you are in the `p6` direcotry and then running `docker-compose up -d`. 
+
+Next run `docker ps` which will produce an output like this:
+```
+CONTAINER ID   IMAGE      COMMAND          CREATED        STATUS        PORTS                      NAMES
+7b1ab3156825   p6-image   "sh /start.sh"   39 hours ago   Up 39 hours   127.0.0.1:5001->5000/tcp   p6_db_3
+4c4427fcbca4   p6-image   "sh /start.sh"   39 hours ago   Up 39 hours   127.0.0.1:5000->5000/tcp   p6_db_2
+bd3b8e3bca56   p6-image   "sh /start.sh"   39 hours ago   Up 39 hours   127.0.0.1:5002->5000/tcp   p6_db_1
+```
+Note that container `p6_db_2` is using the host port `127.0.0.1:5000`. We are going to be running all of other scripts in this container, and thus will
+be calling the `<main_container>` in the rest of the docker specs. Thus, if you see something like `docker inspect <main_container>` then that is equivalent
+to `docker inspect p6_db_2` based on the docker ps output.  
+
+Then manually start Jupyter inside the main container using the command:
+```
+docker exec -it -d <main_container> python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --notebook-dir notebooks  --NotebookApp.token='' --allow-root
+```
+This command exposes the jupyterlab server from the <main_container> to your host VM and you can connect to the server using `http://localhost:5000` on your host VM. 
+
+Note that a `p6.ipynb` containing a starting template has already been provided to you. The starter code specifies all the imports you will likely need to complete this project but feel free add more imports if necessary. Next the 
+Additionally, it sets up a cluster that will connect to the three nodes as well as spark session you can use.
+
 ## Part 1: Station Metadata
 
-Using Docker compose, launch a cluster three Cassandra nodes.  For
-inspiration, here are some files that could help: [Container Setup
-Files](./containers.md).
-
-Use `docker ps` to see which container is using host port
-127.0.0.1:5000, then manually start Jupyter inside that container:
-
-```
-docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --notebook-dir notebooks  --NotebookApp.token='' --allow-root
-```
-
-Create a `p5.ipynb` notebook for your work inside the `notebooks`
-directory.  Your notebook should start by connecting to the Cassandra
-cluster and running `drop keyspace if exists weather`.
-
-Feel free to use the starter code to connect the Cassandra cluster
-
-```python
-from cassandra.cluster import Cluster
-try:
-    cluster = Cluster(['p5-db-1', 'p5-db-2', 'p5-db-3'])
-    session = cluster.connect()
-except Exception as e:
-    print(e)
-```
-
-Depending on the directory where you created your compose files, the
-container names may be different (e.g., not `p5-db-1`) -- please
-update the above snippet accordingly.
-
-Now write some code to do the following:
+The first thing you need to do is implement the `setup_cassandra_table` function which should do the following:
+* drop a `weather` keyspace if it already exists
 * create a `weather` keyspace with 3x replication
 * inside `weather`, create a `station_record` type containing two ints: `tmin` and `tmax`
 * inside `weather`, create a `stations` table
@@ -77,39 +74,16 @@ Now write some code to do the following:
   * `id` is a partition key and corresponds to a station's ID (like 'USC00470273')
   * `date` is a cluster key, ascending
   * `name` is a static field (because there is only one name per ID).  Example: 'UW ARBORETUM - MADISON'
-  * `record` is a regular field because there will be many records per station partition
+  * `record` is a regular field because there will be many records per station partition. Note that since record is a user defined type, you should ensure that is immutable using the `frozen` keyword.
 
 #### Q1: what is the schema?
 
-Run the following so that we can see and check.
-
-```python
-print(cass.execute("describe keyspace weather").one().create_statement)
-print(cass.execute("describe table weather.stations").one().create_statement)
-```
-
-**Important:** you'll answer 7 questions in this project.  Paste each
-  question and it's number (e.g., "# Q1: ...") as a comment in your
-  notebook prior to each answer so we can easily search your notebook
-  and give you credit for your answers.
+Next run the cell with the `# Q1` comment which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
 
 #### Station Metadata
 
-Start a Spark session:
-
-```python
-from pyspark.sql import SparkSession
-spark = (SparkSession.builder
-         .appName("p5")
-         .config('spark.jars.packages', 'com.datastax.spark:spark-cassandra-connector_2.12:3.2.0')
-         .config("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions")
-         .getOrCreate())
-```
-
-Note that we're running Spark in a simple "local mode" -- we're not
-connecting to a Spark cluster so we won't have multiple workers.
-Tasks will be executed directly by the driver.  Also note that we're
-including the Spark/Cassandra connector extension.
+The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not
+connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
 
 Download https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt.
 
