@@ -89,6 +89,9 @@ def run_tests():
     assert(results["score"] <= results["full_score"])
     if VERBOSE:
         print(results)
+
+    # cleanup code after all tests run
+    shutil.rmtree(TMP_DIR)
     return results
 
 # save the result as json
