@@ -113,7 +113,7 @@ repo, with at least one commit by each partner.
 
 ## Tester
 
-Run `python3 autograde.py` to test your work and environment setup.
+Run `python3 p1.tests.py` to test your work and environment setup.
 This will probably be your grade, but autograders are imperfect, so we
 reserve the right to deduct further points.  Some cases are when
 students achieve the correct output by hardcoding, or not using an
