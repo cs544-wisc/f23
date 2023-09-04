@@ -36,18 +36,18 @@ class _unit_test():
 
         ret.send((points, result))
 
-# init annotator
+# init decorator
 def init(init_func):
     global INIT
     INIT = init_func
 
-# test annotator
+# test decorator
 def test(points, timeout=None, desc=""):
     def wrapper(test_func):
         TESTS[test_func.__name__] = _unit_test(test_func, points, timeout, desc)
     return wrapper
 
-# cleanup annotator
+# cleanup decorator
 def cleanup(cleanup_func):
     global CLEANUP
     CLEANUP = cleanup_func
