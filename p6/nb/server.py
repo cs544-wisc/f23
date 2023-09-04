@@ -18,14 +18,45 @@ try:
 except Exception as e:
     print(e)
 
-cluster.register_user_type('weather', 'station_record', StationRecord)
-insert_prepared_statement = "INSERT INTO weather.stations(id, date, record) VALUES (?, ?, ?)"
-insert_statement = session.prepare(insert_prepared_statement)
-insert_statement.consistency_level = ConsistencyLevel.ONE
+def setup_cassandra_table():
+    session.execute("DROP KEYSPACE IF EXISTS weather;") # Ensure to drop the keyspace
 
-max_prepared_statement = "SELECT * FROM weather.stations WHERE id = ?"
-max_statement = session.prepare(max_prepared_statement)
-max_statement.consistency_level = ConsistencyLevel.THREE
+    # Create keyspace
+    session.execute("""CREATE keyspace weather
+    WITH REPLICATION = { 
+    'class' : 'SimpleStrategy', 
+    'replication_factor' : 3 
+    };""")
+
+    # Create type
+    session.execute(""" CREATE type weather.station_record (
+        tmin int,
+        tmax int                
+    );""")
+
+    # Create table
+    session.execute(""" CREATE TABLE weather.stations (
+        id text,
+        name text STATIC,
+        date date,
+        record FROZEN<weather.station_record>,
+        PRIMARY KEY (id, date)              
+    ) WITH CLUSTERING ORDER BY (date ASC); """)
+
+while True:
+    try:
+        cluster.register_user_type('weather', 'station_record', StationRecord)
+        insert_prepared_statement = "INSERT INTO weather.stations(id, date, record) VALUES (?, ?, ?)"
+        insert_statement = session.prepare(insert_prepared_statement)
+        insert_statement.consistency_level = ConsistencyLevel.ONE
+
+        max_prepared_statement = "SELECT * FROM weather.stations WHERE id = ?"
+        max_statement = session.prepare(max_prepared_statement)
+        max_statement.consistency_level = ConsistencyLevel.THREE
+        break
+    except:
+        setup_cassandra_table()
+
 
 class ServerImplementation(station_pb2_grpc.StationServicer):
 

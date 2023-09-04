@@ -80,8 +80,7 @@ Next run the cell with the comment "Q1 Ans" which calls `setup_cassandra_table()
 
 ### Adding metadata to table
 
-The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not
-connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
+The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
 
 The next we have to do is read the `stations_metadata.csv` file. The starter code alreadys provides you the code to read this file into a Spark table. Note that the table
 has the following schema:
@@ -113,8 +112,6 @@ Verify your code by running the cell with the comment "Q2 Ans" which should outp
 Row token: -9014250178872933741
 Vnode token: -8978105931410738024
 ```
-
-**Finally, make sure you run the cell containing spark.stop() before the P2 header.**
 
 ## Part 2: Temperature Data
 
@@ -176,6 +173,10 @@ with `RecordTemps`; it would be better to return an error message if necessary.
 If execute of either prepared statement raises a `ValueError` or `cassandra.Unavailable` exception, `server.py` should return a
 response with the `error` string set to something informative.
 
+**Important: Your server.py can't make the assumption that stations table or the weather keyspace has already been created. Thus, your
+code your should check if the keyspace exists and if not create the keyspace and table following the instructions in Part 1. We recommend
+copying your `setup_cassandra_table` implementation and using it in server.py.**
+
 Making sure to save your `server.py`, startup the server by running the command:
 ```
 docker exec -it <main_container> python3 /notebooks/server.py
@@ -202,7 +203,7 @@ max temp for USW00014839 is 378
 
 ## Part 3: Spark Analysis
 
-Next we are going to be configuring our spark session such that we have access to the table in Cassandra. The starter code already includes code to create a spark session capable of connecting to the cassandra nodes as well as code to read the table using the session. You can find this code in the cell after the Part 3 header. 
+Next we are going to be configuring our spark session such that we have access to the table in Cassandra. The starter code already includes code to read the table using the session. You can find this code in the cell after the Part 3 header. 
 
 Next implement the function `create_weather_view` (having comment "Initialize the weather2022 view") which should do the following:
 * Create a view called `weather2022` that contains all 2022 data from `cassandra.weather.stations`.

@@ -1,9 +1,16 @@
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
-from nbconvert.preprocessors import CellExecutionError
+from nbconvert.exporters import NotebookExporter
 from traitlets.config import Config
+from argparse import ArgumentParser
+import json
 
-class Part1Executor(ExecutePreprocessor):
+def read_args():
+    parser = ArgumentParser()
+    parser.add_argument('-p', '--parts', nargs='+', default=[])
+    return parser.parse_args()
+
+class PartExecutor(ExecutePreprocessor):
 
     def set_valid_range(self, ranges):
         self.valid_ranges = ranges
@@ -38,6 +45,23 @@ def get_cell_idx_containing_txt(notebook, texts):
             return idx
     
     return num_cells - 1
+
+def get_cell_range(notebook, part):
+    part_num = int(part.split("_")[1].strip())
+    start_txt = "## Part " + str(part_num)
+    end_txt = "## Part " + str(part_num + 1)
+
+    return [get_cell_idx_containing_txt(notebook, [start_txt]) + 1, get_cell_idx_containing_txt(notebook, [end_txt]) - 1]
+
+def get_cells_to_execute(notebook, args):
+    setup_end =  get_cell_idx_containing_txt(notebook, "## Part 1")
+    last_cell_idx = len(notebook.cells) - 1
+    default_cells = [[0, setup_end], [last_cell_idx, last_cell_idx]]
+
+    for cell_name in args.parts:
+        default_cells.append(get_cell_range(notebook, cell_name))
+    
+    return default_cells
 
 # Tuple format: Part idx, points, expected text
 expected_checks = [(0, 1.0, "CREATE KEYSPACE weather"),
@@ -99,40 +123,31 @@ def check_cells_for_error(notebook, cell_ranges):
     
     return None
 
-def execute_part_1(timeout_val):
+def runner(timeout = 1000):
+    # Read the notebook
     notebook_path = "/notebooks/p6.ipynb"
     notebook = nbformat.read(notebook_path, as_version=4)
 
-    # Determine cells to run
-    possible_txts = ["setup_cassandra_table()", "describe table weather.stations"]
-    stop_cell = get_cell_idx_containing_txt(notebook, possible_txts)
-    last_cell = len(notebook.cells) - 1
-    cell_ranges = [ [0, stop_cell], [last_cell, last_cell] ]
+    # Get the cells to run
+    args = read_args()
+    cells_to_run = get_cells_to_execute(notebook, args)
+    print("Running cellls", cells_to_run, "of", notebook_path)
 
-    # Execute the first part
-    metadata = {'metadata': {'path': '/notebooks/'}}
-    part1_executor = Part1Executor(timeout = timeout_val, kernel_name='python3')
-    part1_executor.set_valid_range(cell_ranges)
+    # Create a preprocessor to execute those cells
+    notebook_executor = PartExecutor(timeout = timeout, kernel_name='python3')
+    notebook_executor.set_valid_range(cells_to_run)
 
+    # Write code to run those cells and export the result
     try:
-        part1_executor.preprocess(notebook, metadata)
+        metadata = {'metadata': {'path': '/notebooks/'}}
+        notebook_executor.preprocess(notebook, resources = metadata)
     except:
-        print("Encountered error running part 1 database")
+        pass
     
-    # Check for errors
-    txt_to_output = None
-    err_message = check_cells_for_error(notebook, cell_ranges)
-    if err_message is not None:
-        txt_to_output = err_message + "\n OVERALL SCORE: 0%"
-    else:
-        txt_to_output = check_describe_commits(notebook, cell_ranges)
-
-    # Read the output
-    with open("result.txt", "w+") as writer:
-        writer.write(txt_to_output)
-
-def runner():
-    execute_part_1(600)
+    # Write the output
+    file_name = ",".join(args.parts) + ",result.ipynb"
+    print("Writing result to file", file_name)
+    nbformat.write(notebook, file_name)
 
 if __name__ == "__main__":
     runner()
