@@ -1,4 +1,4 @@
-from tester import init, test, cleanup, tester_main
+from tester import *
 import os
 import time
 import p6_scripts.p6_init_script as p6_init
@@ -7,7 +7,7 @@ import nbformat
 all3_notebook, all2_notebook = None, None
 
 @init
-def init():
+def init(verbose = False):
     global all3_notebook, all2_notebook
 
     # Switch working directory
@@ -16,15 +16,14 @@ def init():
     notebook_runner = os.path.join(tester_dir, "p6_scripts", "notebook_runner.py")
 
     # Run the notebook
-    result_paths = p6_init.run_notebooks(notebook_runner)
+    result_paths = p6_init.run_notebooks(notebook_runner, debug = verbose)
     if result_paths is None:
         raise Exception("Couldn't sucessfully rerun the notebooks")
     
     # Read the notebooks
     notebook_all3_path, notebook_all2_path = result_paths
-    all3_notebook = nbformat.read(notebook_all3_path, as_version=4)
-    all2_notebook = nbformat.read(notebook_all2_path, as_version=4)
-    print("Loaded the runned notebooks")
+    print("All 3 path", notebook_all3_path)
+    print("All 2 path", notebook_all2_path)
 
 @test(points = 15, timeout = 10)
 def all3_exists():

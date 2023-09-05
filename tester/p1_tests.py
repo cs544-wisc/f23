@@ -4,7 +4,7 @@ import os
 from tester import init, test, cleanup, tester_main
 
 @init
-def init():
+def init(verbose = False):
     os.system("docker rmi -f p1")
     os.system("docker container rm p1_tester")
     

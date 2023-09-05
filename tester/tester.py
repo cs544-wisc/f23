@@ -115,7 +115,10 @@ def tester_main():
 
     # make a copy of the code ensuring that we have the same dir name
     with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = os.path.join(temp_dir, os.path.basename(test_dir))
+        temp_parent_dir = temp_dir
+        if VERBOSE:
+            temp_parent_dir = os.getcwd()
+        temp_path = os.path.join(temp_parent_dir, os.path.basename(test_dir))
         
         # Ensure we copy into an empty dir
         if os.path.exists(temp_path):
@@ -128,7 +131,7 @@ def tester_main():
 
         # run init
         if INIT:
-            INIT()
+            INIT(verbose = VERBOSE)
         
         # run tests
         results = run_tests()
@@ -137,3 +140,5 @@ def tester_main():
         # run cleanup
         if CLEANUP:
             CLEANUP()
+        
+        shutil.rmtree(temp_path)

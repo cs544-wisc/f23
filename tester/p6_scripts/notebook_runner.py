@@ -5,6 +5,8 @@ from traitlets.config import Config
 from argparse import ArgumentParser
 import json
 
+import sys
+
 def read_args():
     parser = ArgumentParser()
     parser.add_argument('-p', '--parts', nargs='+', default=[])
@@ -71,7 +73,7 @@ def runner(timeout = 1000):
     # Get the cells to run
     args = read_args()
     cells_to_run = get_cells_to_execute(notebook, args)
-    print("Running cellls", cells_to_run, "of", notebook_path)
+    print("Running cellls", cells_to_run, "of", notebook_path, file = sys.stderr)
 
     # Create a preprocessor to execute those cells
     notebook_executor = PartExecutor(timeout = timeout, kernel_name='python3')
@@ -81,12 +83,13 @@ def runner(timeout = 1000):
     try:
         metadata = {'metadata': {'path': '/notebooks/'}}
         notebook_executor.preprocess(notebook, resources = metadata)
-    except:
-        pass
+    except Exception as e:
+        print("Failed to run notebook due to error:", file = sys.stderr)
+        print(e, file = sys.stderr)
     
     # Write the output
     file_name = ",".join(args.parts) + ",result.ipynb"
-    print("Writing result to file", file_name)
+    print("Writing result to file", file_name, file = sys.stderr)
     nbformat.write(notebook, file_name)
 
 if __name__ == "__main__":

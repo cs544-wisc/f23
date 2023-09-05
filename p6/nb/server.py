@@ -12,11 +12,8 @@ class StationRecord:
         self.tmax = tmax
 
 # Initialize the session
-try:
-    cluster = Cluster(['p6_db_2', 'p6_db_1', 'p6_db_3'])
-    session = cluster.connect()
-except Exception as e:
-    print(e)
+cluster = Cluster(['p6_db_2', 'p6_db_1', 'p6_db_3'])
+session = cluster.connect()
 
 def setup_cassandra_table():
     session.execute("DROP KEYSPACE IF EXISTS weather;") # Ensure to drop the keyspace
@@ -43,7 +40,8 @@ def setup_cassandra_table():
         PRIMARY KEY (id, date)              
     ) WITH CLUSTERING ORDER BY (date ASC); """)
 
-while True:
+count = 0
+while count < 5:
     try:
         cluster.register_user_type('weather', 'station_record', StationRecord)
         insert_prepared_statement = "INSERT INTO weather.stations(id, date, record) VALUES (?, ?, ?)"
@@ -56,7 +54,10 @@ while True:
         break
     except:
         setup_cassandra_table()
+        count += 1
 
+if count >= 5:
+    raise Exception("Unable to create prepared statements every after", count, "tries")
 
 class ServerImplementation(station_pb2_grpc.StationServicer):
 
