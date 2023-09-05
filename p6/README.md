@@ -117,7 +117,7 @@ Vnode token: -8978105931410738024
 
 Now you'll write gRPC-based server.py file that receives temperature data and records it to `weather.stations`.  You could imagine various
 sensor devices acting as clients that make gRPC calls to `server.py` to record data, but for simplicity we'll make the client calls from
-`p6.ipynb`.
+`p6.ipynb`. Start by creating the file `server.py` file in the `nb` directory.
 
 In the starter code, we provide with the following proto file in `nb/station.proto`:
 ```
@@ -235,7 +235,7 @@ Coorelation of 0.21
 
 ## Part 4: Disaster Strikes
 
-Before starting this part, kill off one of the containers that is not the `<main_container>` using `docker kill`. 
+Before starting this part, kill off one of the containers that is **not the `<main_container>`** using `docker kill`. 
 
 #### Q5: does StationMax still work?
 
