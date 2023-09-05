@@ -1,0 +1,26 @@
+syntax="proto3";
+
+service Station {
+        rpc RecordTemps(RecordTempsRequest) returns (RecordTempsReply) {}
+        rpc StationMax(StationMaxRequest) returns (StationMaxReply) {}
+}
+
+message RecordTempsRequest {
+        string station = 1;
+        string date = 2;
+        int32 tmin = 3;
+        int32 tmax = 4;
+}
+
+message RecordTempsReply {
+        string error = 1;
+}
+
+message StationMaxRequest {
+        string station = 1;
+}
+
+message StationMaxReply {
+        int32 tmax = 1;
+        string error = 2;
+}

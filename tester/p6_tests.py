@@ -21,9 +21,7 @@ def init(verbose = False):
         raise Exception("Couldn't sucessfully rerun the notebooks")
     
     # Read the notebooks
-    notebook_all3_path, notebook_all2_path = result_paths
-    print("All 3 path", notebook_all3_path)
-    print("All 2 path", notebook_all2_path)
+    all3_notebook, all2_notebook = result_paths
 
 @test(points = 15, timeout = 10)
 def all3_exists():

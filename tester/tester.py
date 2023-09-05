@@ -140,5 +140,3 @@ def tester_main():
         # run cleanup
         if CLEANUP:
             CLEANUP()
-        
-        shutil.rmtree(temp_path)
