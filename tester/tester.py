@@ -1,11 +1,9 @@
 import json, argparse
 import os, traceback, shutil
-
+import tempfile
 import multiprocessing
 
 VERBOSE = False
-
-TMP_DIR = "/tmp/_cs544_tester_directory"
 TEST_DIR = None
 
 # full list of tests
@@ -59,11 +57,6 @@ def list_tests():
 
 # run all tests
 def run_tests():
-
-    # make a copy of the code
-    shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True)
-    os.chdir(TMP_DIR)
-
     results = {
         "score": 0,
         "full_score": 0,
@@ -90,16 +83,14 @@ def run_tests():
     if VERBOSE:
         print(results)
 
-    # cleanup code after all tests run
-    shutil.rmtree(TMP_DIR)
     return results
 
 # save the result as json
 def save_results(results):
-    output_file = f"{TEST_DIR}/test.json"
+    output_file = f"{TEST_DIR}/test_result.json"
     with open(output_file, "w") as f:
         json.dump(results, f)
-
+    print("Test results saved to path", output_file)
 
 def tester_main():
     global VERBOSE, TEST_DIR
@@ -122,14 +113,27 @@ def tester_main():
         return
     TEST_DIR = os.path.abspath(test_dir)
 
-    # run init
-    if INIT:
-        INIT()
-    
-    # run tests
-    results = run_tests()
-    save_results(results)
+    # make a copy of the code ensuring that we have the same dir name
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = os.path.join(temp_dir, os.path.basename(test_dir))
+        
+        # Ensure we copy into an empty dir
+        if os.path.exists(temp_path):
+            shutil.rmtree(temp_path)
+        os.makedirs(temp_path, exist_ok = True)
+        
+        # Copy the student code to the temp dir
+        shutil.copytree(src=TEST_DIR, dst = temp_path, dirs_exist_ok=True)
+        os.chdir(temp_path)
 
-    # run cleanup
-    if CLEANUP:
-        CLEANUP()
+        # run init
+        if INIT:
+            INIT()
+        
+        # run tests
+        results = run_tests()
+        save_results(results)
+
+        # run cleanup
+        if CLEANUP:
+            CLEANUP()

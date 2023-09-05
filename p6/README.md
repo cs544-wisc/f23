@@ -2,10 +2,6 @@
 
 # P6 (6% of grade): Cassandra, Weather Data
 
-## Running the autograder
-
-You can run the autograder by running the command `autograder_scripts/autograder.py` from the `p6` directory.
-
 ## Overview
 
 NOAA (National Oceanic and Atmospheric Administration) collects
@@ -27,7 +23,9 @@ Learning objectives:
 * configure queries to tradeoff read/write availability
 * refresh a stale cache
 
-Before starting, please review the [general project directions](../projects.md).
+Before starting, please review the [general project directions](../projects.md). 
+**Important: Please don't remove any comments in the starting code as the autograder uses that to determine
+which cells to run and check.**
 
 ## Corrections/Clarifications
 
@@ -223,7 +221,7 @@ Verify your implementation by running the cell with the comment "Weather2022 ver
 
 Madison airport has a station id of USW00014837. Using this information, `weather2022` and your UDF generate the following plot:
 
-<img src="images/q3.png" width=600>
+<img src="q3.png" width=600>
 
 Write your code in the cell with the comment "TODO: Q3. 
 
