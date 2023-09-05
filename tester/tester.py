@@ -81,7 +81,7 @@ def run_tests():
 
     assert(results["score"] <= results["full_score"])
     if VERBOSE:
-        print(results)
+        print("Saving JSON of", results)
 
     return results
 
@@ -89,7 +89,7 @@ def run_tests():
 def save_results(results):
     output_file = f"{TEST_DIR}/test_result.json"
     with open(output_file, "w") as f:
-        json.dump(results, f)
+        json.dump(results, f, indent = 4)
     print("Test results saved to path", output_file)
 
 def tester_main():
@@ -97,6 +97,7 @@ def tester_main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dir", type=str, default = ".", help="path to your repository")
+    parser.add_argument("-t", "--tmp_dir", type=str, default = "", help="path to the temp dir")
     parser.add_argument("-l", "--list", action="store_true", help="list all tests")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
@@ -116,8 +117,8 @@ def tester_main():
     # make a copy of the code ensuring that we have the same dir name
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_parent_dir = temp_dir
-        if VERBOSE:
-            temp_parent_dir = os.getcwd()
+        if len(args.tmp_dir) > 0:
+            temp_parent_dir = args.tmp_dir
         temp_path = os.path.join(temp_parent_dir, os.path.basename(test_dir))
         
         # Ensure we copy into an empty dir
@@ -140,3 +141,6 @@ def tester_main():
         # run cleanup
         if CLEANUP:
             CLEANUP()
+        
+        if len(args.tmp_dir) == 0:
+            shutil.rmtree(temp_path)

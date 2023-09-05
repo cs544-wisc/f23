@@ -1,1 +1,25 @@
-{"score": 30, "full_score": 30, "all3_exists": "PASS (15/15)", "all2_exists": "PASS (15/15)"}
+{
+    "score": 20.0,
+    "full_score": 20.0,
+    "q1_keyspace_creation": "PASS (1/1)",
+    "q1_replication_factor": "PASS (1/1)",
+    "q1_station_record_type": "PASS (1/1)",
+    "q1_station_record_min_field": "PASS (0.5/0.5)",
+    "q1_station_record_max_field": "PASS (0.5/0.5)",
+    "q1_stations_table": "PASS (1/1)",
+    "q1_stations_id_field": "PASS (1/1)",
+    "q1_stations_date_field": "PASS (1/1)",
+    "q1_stations_record_field": "PASS (1/1)",
+    "q1_stations_primary_key": "PASS (1/1)",
+    "q2_row_token": "PASS (1/1)",
+    "q2_vnode_token": "PASS (1/1)",
+    "simulate_USW00014837": "PASS (1/1)",
+    "simulate_USR0000WDDG": "PASS (1/1)",
+    "simulate_USW00014898": "PASS (1/1)",
+    "simulate_USW00014839": "PASS (1/1)",
+    "q4_coor": "PASS (1/1)",
+    "q5_coor": "PASS (1/1)",
+    "q6_coor": "PASS (1/1)",
+    "q7_before": "PASS (1/1)",
+    "q7_after": "PASS (1/1)"
+}

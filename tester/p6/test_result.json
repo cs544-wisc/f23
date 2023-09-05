@@ -1,1 +1,25 @@
-{"score": 30, "full_score": 30, "all3_exists": "PASS (15/15)", "all2_exists": "PASS (15/15)"}
+{
+    "score": 18.0,
+    "full_score": 20.0,
+    "q1_keyspace_creation": "PASS (1/1)",
+    "q1_replication_factor": "PASS (1/1)",
+    "q1_station_record_type": "PASS (1/1)",
+    "q1_station_record_min_field": "PASS (0.5/0.5)",
+    "q1_station_record_max_field": "PASS (0.5/0.5)",
+    "q1_stations_table": "PASS (1/1)",
+    "q1_stations_id_field": "PASS (1/1)",
+    "q1_stations_date_field": "PASS (1/1)",
+    "q1_stations_record_field": "PASS (1/1)",
+    "q1_stations_primary_key": "PASS (1/1)",
+    "q2_row_token": "PASS (1/1)",
+    "q2_vnode_token": "PASS (1/1)",
+    "simulate_USW00014837": "PASS (1/1)",
+    "simulate_USR0000WDDG": "PASS (1/1)",
+    "simulate_USW00014898": "PASS (1/1)",
+    "simulate_USW00014839": "PASS (1/1)",
+    "q4_coor": "PASS (1/1)",
+    "q5_coor": "Cell with text # TODO: Q5 has stderr of 23/09/05 03:37:12 WARN ChannelPool: [s0|p6_db_1/172.31.0.4:9042]  Error while opening new channel (ConnectionInitException: [s0|connecting...] Protocol initialization request, step 1 (STARTUP {CQL_VERSION=3.0.0, DRIVER_NAME=DataStax Java driver for Apache Cassandra(R), DRIVER_VERSION=4.13.0, CLIENT_ID=22aff8ef-0f88-4b19-9624-d705dd2f2960, APPLICATION_NAME=Spark-Cassandra-Connector-local-1693883965024}): failed to send request (com.datastax.oss.driver.shaded.netty.channel.StacklessClosedChannelException))",
+    "q6_coor": "Cell with text # TODO: Q6 has stderr of 23/09/05 03:39:16 WARN ChannelPool: [s0|p6_db_1/172.31.0.4:9042]  Error while opening new channel (ConnectionInitException: [s0|connecting...] Protocol initialization request, step 1 (STARTUP {CQL_VERSION=3.0.0, DRIVER_NAME=DataStax Java driver for Apache Cassandra(R), DRIVER_VERSION=4.13.0, CLIENT_ID=22aff8ef-0f88-4b19-9624-d705dd2f2960, APPLICATION_NAME=Spark-Cassandra-Connector-local-1693883965024}): failed to send request (com.datastax.oss.driver.shaded.netty.channel.StacklessClosedChannelException))\n23/09/05 03:40:19 WARN ChannelPool: [s0|p6_db_1/172.31.0.4:9042]  Error while opening new channel (ConnectionInitException: [s0|connecting...] Protocol initialization request, step 1 (STARTUP {CQL_VERSION=3.0.0, DRIVER_NAME=DataStax Java driver for Apache Cassandra(R), DRIVER_VERSION=4.13.0, CLIENT_ID=22aff8ef-0f88-4b19-9624-d705dd2f2960, APPLICATION_NAME=Spark-Cassandra-Connector-local-1693883965024}): failed to send request (com.datastax.oss.driver.shaded.netty.channel.StacklessClosedChannelException))",
+    "q7_before": "PASS (1/1)",
+    "q7_after": "PASS (1/1)"
+}

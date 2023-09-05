@@ -278,6 +278,11 @@ docker exec -it ???? python3 /notebooks/server.py
 
 We should then be able to open `http://localhost:5000/lab`, find your notebook, and run it.
 
+We also be using an autograder to verify your solution which you can run yourself by running the following command in the `tester` directory:
+```
+python3 p6_tests.py --dir ../p6 --verbose --tmp_dir .
+```
+
 ## Approximate Rubric:
 
 The following is approximately how we will grade, but we may make
