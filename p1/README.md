@@ -91,7 +91,8 @@ have a shebang line so that it runs with with `bash`.
 
 Create a `Dockerfile` that starts from a base image of your choosing
 and includes your `count.sh` file.  The Dockerfile should do any
-installs needed for your script to run.
+installs needed for your script to run. When the container for this 
+image is run, it should invoke the `count.sh` script and display its output.
 
 You should be able to create an image and container like this:
 
