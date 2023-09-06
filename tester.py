@@ -93,7 +93,9 @@ def run_tests():
 
     assert(results["score"] <= results["full_score"])
     if VERBOSE:
-        print(results)
+        print("===== Final Score =====")
+        print(json.dumps(results, indent=4))
+        print("=======================")
 
     # cleanup code after all tests run
     shutil.rmtree(TMP_DIR)
@@ -102,6 +104,7 @@ def run_tests():
 # save the result as json
 def save_results(results):
     output_file = f"{TEST_DIR}/test.json"
+    print(f"Output written to: {output_file}")
     with open(output_file, "w") as f:
         json.dump(results, f)
 
