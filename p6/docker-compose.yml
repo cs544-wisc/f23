@@ -7,6 +7,5 @@ services:
         volumes:
         - "./nb:/notebooks"
         - "./image/cassandra.sh:/start.sh:ro"
-        - "./datasets:/datasets:ro"
         ports:
         - "127.0.0.1:5000-5002:5000"
