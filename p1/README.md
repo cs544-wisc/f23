@@ -119,6 +119,7 @@ repo, with at least one commit by each partner.
 
 Copy `autograde.py` and `../tester.py` to your working directory 
 then run `python3 autograde.py` to test your work and environment setup.
+The test result will be written to a `test.json` file in your directory. 
 This will probably be your grade, but autograders are imperfect, so we
 reserve the right to deduct further points.  Some cases are when
 students achieve the correct output by hardcoding, or not using an
