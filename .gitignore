@@ -132,4 +132,5 @@ dmypy.json
 
 # P6 files
 *.zip
+!p6/datasets/select-wi-stations.zip
 *.csv.gz

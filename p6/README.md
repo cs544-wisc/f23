@@ -36,6 +36,44 @@ which cells to run and check.**
 * Apr 11: updated examples to have server.py in "notebooks" (instead of "share")
 * Apr 12: added clarification about counts in q7
 
+## Datasets
+
+We are going to be using two datasets in this project: a station metadata dataset and a station temperature data dataset. While we provide a high level overview of the datasets in this section, you can find more information about the datasets here: [https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt](https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt)
+
+### Station metadata dataset
+
+You can find the dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt](https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt) which you can download using the `wget` command. Each line of the above file has the following formation:
+```
+------------------------------
+Variable   Columns   Type
+------------------------------
+ID            1-11   Character
+LATITUDE     13-20   Real
+LONGITUDE    22-30   Real
+ELEVATION    32-37   Real
+STATE        39-40   Character
+NAME         42-71   Character
+GSN FLAG     73-75   Character
+HCN/CRN FLAG 77-79   Character
+WMO ID       81-85   Character
+------------------------------
+```
+Each line in the the txt file represents a seperate station and you can read the above table as saying that, for example, columns 1 through 11 of a row represents the ID of that station. 
+
+### Station temperature data dataset
+
+You can get this dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/select-wi-stations.zip](https://pages.cs.wisc.edu/~harter/cs544/data/select-wi-stations.zip) which you can also download using the wget command. 
+You first need to unzip the file using the `unzip` command and when you do that you will notice that it will extract about 5 files, all of whose name follows this format: "<station_id>.csv.gz". Each file contains all the temperature data for the station it is named after. Let us say that the dataset included information for a station with an id of "test" in the file "test.csv.gz". You can read that file using the following code:
+```
+df = spark.read.format("csv").option("delimiter", ",").option("compression", "gzip").option("inferSchema", "true").load("test.csv.gz")
+```
+
+Note that this dataframe will have 8 columns, but we primarily only care about the first four columns which in order are `["station_id", "date", "PRCP", "5"]`. Let us say afterwards I run the command `df.head(1)` and it produces the output:
+```
+[Row(_c0='test', _c1=20210408, _c2='PRCP', _c3=5, _c4=None, _c5=None, _c6='N', _c7=700)]
+```
+then I can interpret that as station "test" had a "PRCP" value of "5" on "20210408". 
+
 ## Setup
 
 We have provided you a Docker compose file that launches three cassandra nodes. You can start up these nodes by making sure you are in the `p6` direcotry and then running `docker-compose up -d`. Note that you need to wait about 15 to 20 seconds after spinning up the containers before you can connect to the cluster.
@@ -80,22 +118,7 @@ Next run the cell with the comment "Q1 Ans" which calls `setup_cassandra_table()
 
 The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
 
-The next we have to do is read the `stations_metadata.csv` file. The starter code alreadys provides you the code to read this file into a Spark table. Note that the table
-has the following schema:
-```
-root
- |-- ID: string (nullable = true)
- |-- LATITUDE: string (nullable = true)
- |-- LONGITUDE: string (nullable = true)
- |-- ELEVATION: string (nullable = true)
- |-- STATE: string (nullable = true)
- |-- NAME: string (nullable = true)
- |-- GSN FLAG: string (nullable = true)
- |-- HCN/CRN FLAG: string (nullable = true)
- |-- WMO ID: string (nullable = true)
-``` 
-
-Now use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra and that you write your code in the cell with the comment "TODO: Code to insert metadata into weather.stations".
+We will first work with stations metadata dataset. Use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one. Please make sure to verify your Spark DataFrame before inserting metatdata to Casssandra and that you write your code in the cell with the comment "TODO: Code to insert metadata into weather.stations".
 
 You can verify that you performed the above task correctly by running the cell containing the comment "Metadata insert verify" and ensuring that it prints out `1313`.
 
@@ -183,13 +206,12 @@ docker exec -it <main_container> python3 /notebooks/server.py
 ### Client
 
 Once the server is running, we will connect to from our juypter notebook. In Part 2 of the notebook, fill out the cell with the comment
-"Connect to the server" to create the client and the stub. 
+"Connect to the server" to create the client and the stub. We will be using the stations temperature data dataset to get the temperature readings
+to send for each sensor. 
 
 Then implement the `simulate_sensor` function (having comment "TODO: gRPC client simulation") which takes in a `sensor_id` and then sends
-data from that sensor to the server. You can find the temperature data for all of the sensors `/datasets/station_temp_data.csv` and it is a CSV file having
-4 columns: [`station_id`, `date`, `type`, `value`]. The `type` field specifies what kinda of data it is: `TMIN` (Min temperature) or `TMAX` (Max temperature). 
-Your implementation should ensure that for a given `sensor_id`, it should only record data for days for which we have both the `TMIN` and `TMAX` values. The
-function should return the number of dates for which the `stub.RecordTemps` call returned an error. 
+data from that sensor to the server. Your implementation should ensure that for a given `sensor_id`, it should only record data for days for 
+which we have both the `TMIN` and `TMAX` values. The function should return the number of dates for which the `stub.RecordTemps` call returned an error. 
 
 To verify your implementation, run the cell having the comment "gRPC client runner" and ensure that produces the following output:
 ```
