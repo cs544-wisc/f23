@@ -70,6 +70,9 @@ def run_tests():
     }
 
     for test_name, test in TESTS.items():
+        if VERBOSE: 
+            print(f"===== Running Test {test_name} =====")
+
         results["full_score"] += test.points
 
         ret_send, ret_recv = multiprocessing.Pipe()
@@ -82,7 +85,9 @@ def run_tests():
             result = "Timeout"
         else:
             (points, result) = ret_recv.recv()
-            
+        
+        if VERBOSE:
+            print(result)
         results["score"] += points
         results[test_name] = result
 
