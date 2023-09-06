@@ -280,8 +280,14 @@ We should then be able to open `http://localhost:5000/lab`, find your notebook, 
 
 We also be using an autograder to verify your solution which you can run yourself by running the following command in the `tester` directory:
 ```
+python3 p6_tests.py --dir ../p6
+```
+
+If we want to see how the autograder works as well as to see the result produced when running your notebooks, run the command in the `tester` directory. 
+```
 python3 p6_tests.py --dir ../p6 --verbose --tmp_dir .
 ```
+This will create a `p6` dir in your `tester` directory and you can find the results in `p6/autograder_results`. 
 
 ## Approximate Rubric:
 
