@@ -39,7 +39,7 @@ def compose_test():
     with open("compose.txt") as f:
         if "v2.20.2" in f.read():
             return None
-    return "could not find v2.20.2 in compose.txt"
+    return "could not find v2.21.0 in compose.txt"
 
 @test(points = 10)
 def executable_test():
