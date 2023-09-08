@@ -21,6 +21,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 * Sep 7: Link to walkthrough + GCP clarification
 * Sep 8: Fix directions to get correct Docker compose version
+* Sep 8: Clarify output format for line count
 
 ## Part 1: Virtual Machine Setup
 
@@ -82,10 +83,12 @@ This zip file contains a CSV file with data about loan applications in
 WI: https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip.
 
 Try running some shell commands to download the zip, extract the
-contents, and count how many lines contain the text "Multifamily" (case sensitive).
+contents, and print how many lines contain the text "Multifamily"
+(case sensitive) -- it's OK if you print other additional output too.
 
 Now, combine these commands in a `count.sh` file; the script should
-have a shebang line so that when running 
+have a shebang line so that the following runs with bash:
+
 ```sh
 ./count.sh
 ```
