@@ -20,6 +20,7 @@ Before starting, please review the [general project directions](../projects.md).
 ## Corrections/Clarifications
 
 * Sept 7: Link to walkthrough + GCP clarification
+* Sept 7: Add in chmod command
 
 ## Part 1: Virtual Machine Setup
 
@@ -89,7 +90,12 @@ have a shebang line so that when running
 ```sh
 ./count.sh
 ```
-it runs with with `bash`.
+it runs with with `bash`. You might run into a permission denied error, in which case
+run the following command:
+```
+chmod u+x ./count.sh
+```
+which gives your your count.sh file executable permission. 
 
 ## Part 4: Docker Image
 
