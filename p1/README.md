@@ -19,7 +19,8 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* none yet
+* Sept 7: Link to walkthrough + GCP clarification
+* Sept 7: Add in chmod command
 
 ## Part 1: Virtual Machine Setup
 
@@ -40,8 +41,8 @@ like what geographic region to create it in (I picked Iowa since it's
 nearby), but here are some highlights:
 
 * you can launch and see VMs from here: https://console.cloud.google.com/compute/instances
-* be sure to create an e2-small instance with a 25 GB boot drive.  The monthly estimate should be about $14.73 for the VM (if its not, you probably selected something wrong, and might run out of free credits before the end of the semester).
-* the boot disk must be Ubuntu 22.04 LTS -- select the x86/64 version (**not** Arm64)
+* Be sure to choose e2-small for machine type. 
+* Update your boot disk settings to  use the Ubuntu 22.04 LTS public image -- select the x86/64 version (**not Arm64**) — with a boot disk size of 25 GB. Once you select these settings, the monthly estimate should be about $14.73 for the VM (if it’s not, you probably selected something wrong, and might run out of free credits before the end of the semester).
 * you may have modified firewall settings for other courses, but that's not necessary for 544
 * you'll need to setup an SSH key so you can connect from your laptop: https://console.cloud.google.com/compute/metadata?tab=sshkeys (the browser-based SSH client won't work for what we need to do in this class)
 
@@ -87,7 +88,8 @@ have a shebang line so that when running
 ```sh
 ./count.sh
 ```
-it runs with with `bash`.
+
+Make sure your .sh file is executable!
 
 ## Part 4: Docker Image
 
