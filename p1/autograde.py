@@ -37,7 +37,7 @@ def docker_test():
 @test(points = 10)
 def compose_test():
     with open("compose.txt") as f:
-        if "v2.20.2" in f.read():
+        if "v2.21.0" in f.read():
             return None
     return "could not find v2.21.0 in compose.txt"
 
