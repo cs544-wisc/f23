@@ -19,8 +19,8 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* Sept 7: Link to walkthrough + GCP clarification
-* Sept 7: Add in chmod command
+* Sep 7: Link to walkthrough + GCP clarification
+* Sep 8: Fix directions to get correct Docker compose version
 
 ## Part 1: Virtual Machine Setup
 
@@ -56,12 +56,13 @@ lscpu > cpu.txt
 
 ## Part 2: Docker Install
 
-Carefully follow the directions here to install Docker 24.0.5 on your virtual machine: https://docs.docker.com/engine/install/ubuntu/
+Carefully follow the directions here to install Docker 24.0.5 and Compose 2.20.2 on your virtual machine: https://docs.docker.com/engine/install/ubuntu/
 
 Notes:
 * there are several different approaches described under "Installation methods".  Use the directions under "Install using the apt repository".  Make sure you don't keep going after you reach "Install from a package"
 * the first step under "Install Docker Engine" has two options: "Latest" or "Specific version".  Choose **"Specific version"**
-* we'll use version `5:24.0.5-1~ubuntu.22.04~jammy` -- be sure to modify the `VERSION_STRING` accordingly!
+* here is the command to get the required versions: `
+sudo apt-get install docker-ce=5:24.0.5-1~ubuntu.22.04~jammy docker-ce-cli=5:24.0.5-1~ubuntu.22.04~jammy containerd.io docker-buildx-plugin docker-compose-plugin=2.20.2-1~ubuntu.22.04~jammy`
 
 To avoid needing to run every Docker command with root, there are a
 few more steps you can do here:
