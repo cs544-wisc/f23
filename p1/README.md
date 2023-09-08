@@ -46,8 +46,6 @@ nearby), but here are some highlights:
 * you may have modified firewall settings for other courses, but that's not necessary for 544
 * you'll need to setup an SSH key so you can connect from your laptop: https://console.cloud.google.com/compute/metadata?tab=sshkeys (the browser-based SSH client won't work for what we need to do in this class)
 
-Here is a wonderful walkthrough written by Marrisa, one of the peer mentors, on how to properly setup your VM: [https://github.com/Marissa-working/peer-mentor-fall23-cs544/blob/main/p1/instance.md](https://github.com/Marissa-working/peer-mentor-fall23-cs544/blob/main/p1/instance.md). 
-
 When you're done, check that you have the correct Operating System and
 CPU with `cat /etc/os-release` and `lscpu`.  Save the outputs to hand in too:
 
@@ -90,12 +88,8 @@ have a shebang line so that when running
 ```sh
 ./count.sh
 ```
-it runs with with `bash`. You might run into a permission denied error, in which case
-run the following command:
-```
-chmod u+x ./count.sh
-```
-which gives your your count.sh file executable permission. 
+
+Make sure your .sh file is executable!
 
 ## Part 4: Docker Image
 
