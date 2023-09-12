@@ -2,7 +2,7 @@
 
 ## Install the Jupyter Extension 
 
-First connect to your VM Instance using the Remote Explorer extension on VS Code. Checkout this guide on further details on how to set this up: [https://www.syntio.net/en/labs-musings/connecting-vscode-using-ssh-to-a-vm-instance-on-gcp/](https://www.syntio.net/en/labs-musings/connecting-vscode-using-ssh-to-a-vm-instance-on-gcp/). 
+First connect to your VM Instance using the Remote Explorer extension on VS Code. Checkout this guide on further details on how to set this up: [https://www.syntio.net/en/labs-musings/connecting-vscode-using-ssh-to-a-vm-instance-on-gcp/](https://www.syntio.net/en/labs-musings/connecting-vscode-using-ssh-to-a-vm-instance-on-gcp/). Ignore the part about setting up SSH keys as well as adding them to Google Cloud as you already did that in P1. Instead, follow the section on how to update your ssh config file and use that to Remote-SSH. 
 
 Once you have SSHed into the VM instance, install the extension using the Jupyter extension following these steps:
 * Click on the Extensions tab
