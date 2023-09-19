@@ -166,8 +166,13 @@ You should commit your work in a notebook named `p2.ipynb`.
 ## Tester
 After copying `../tester.py`, `../nbutils.py`, and `autograde.py` to your repository (where your `nb/` directory is located), you can check your notebook answers with this command:
 
-```
+```sh
 python3 autograde.py
+```
+For the autograder to work, for each question, please include a line of comment at the beginning of code cell that outputs the answer. For example, the code block for question 7 should look like
+```python
+#q7
+...
 ```
 
 Of course, the checker only looks at the answers, not how you got
