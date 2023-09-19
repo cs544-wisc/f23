@@ -13,7 +13,7 @@ def cleanup():
     os.system("docker rmi -f p1")
     os.system("docker container rm p1_tester")
 
-@test(points = 15, timeout = 10)
+@test(points = 15)
 def os_test():
     with open("os.txt") as f:
         if "Ubuntu 22.04" in f.read():
@@ -57,12 +57,12 @@ def shebang_test():
         return None
     return "count.sh does not appear to have a bash shebang line"
 
-@test(points = 10)
+@test(points = 10, timeout = 300)
 def build_test():
     os.system("docker rmi -f p1")
     _ = check_output(["docker", "build", ".", "-t", "p1"])
 
-@test(points = 15)
+@test(points = 15, timeout = 300)
 def run_test():
     out = check_output(["docker", "run", "--name", "p1_tester", "p1"])
     if "2493" in str(out, "utf-8"):
