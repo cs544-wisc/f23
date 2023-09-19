@@ -67,6 +67,7 @@ def run_tests():
     results = {
         "score": 0,
         "full_score": 0,
+        "tests": {},
     }
 
     for test_name, test in TESTS.items():
@@ -89,7 +90,7 @@ def run_tests():
         if VERBOSE:
             print(result)
         results["score"] += points
-        results[test_name] = result
+        results["tests"][test_name] = result
 
     assert(results["score"] <= results["full_score"])
     if VERBOSE:
