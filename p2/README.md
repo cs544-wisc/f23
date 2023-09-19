@@ -169,7 +169,7 @@ After copying `../tester.py`, `../nbutils.py`, and `autograde.py` to your reposi
 ```sh
 python3 autograde.py
 ```
-For the autograder to work, for each question, please include a line of comment at the beginning of code cell that outputs the answer. For example, the code block for question 7 should look like
+For the autograder to work, for each question, please include a line of comment at the beginning of code cell that outputs the answer. For example, the code cell for question 7 should look like
 ```python
 #q7
 ...
