@@ -43,7 +43,7 @@ To connect to the kernels, follow these steps:
 * Click on "Select Kernel"
 * Click on "Existing Jupyter Server"
 * Click on "Enter the URL of the running Jupyter server". If this is your first time connecting to the server, you might directly taken to this step without needing to click the option.
-* Enter in the endpoint `https://localhost:8080`
+* Enter in the endpoint `http://localhost:8080`
 * Allow for connection over HTTP in the prompt that shows up on the lower right corner
 * Select the Python 3 kernel 
 * Optionally, enter in a server display name but feel free to leave it blank as well
