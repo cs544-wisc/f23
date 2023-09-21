@@ -5,8 +5,9 @@
 In this project, we'll use PyTorch to create a regression model that
 can predict how many deaths there will be for a WI census tract, given
 the number of people who have tested positive, broken down by age.
-The train.csv and test.csv files we provide are based on this dataset:
-https://data.dhsgis.wi.gov/datasets/wi-dhs::covid-19-vaccination-data-by-census-tract
+The train.csv and test.csv files we provide are based on data from
+https://dhsgis.wi.gov/, downloaded in Spring of 2023 (it appears the
+dataset is no longer available).
 
 Learning objectives:
 * multiply tensors
@@ -18,7 +19,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* none yet
+* updated note about data source
 
 ## Part 1: Setup
 
