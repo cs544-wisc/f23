@@ -15,11 +15,19 @@ Learning objectives:
 * optimize inputs to minimize outputs
 * use optimization to optimize regression coefficients
 
+Note that if you normally use VS Code with Jupyter, your setup for
+this project will be tricky because you can't SSH into a container.
+There are some notes here
+(https://github.com/cs544-wisc/f23/tree/main/docs/vs-code-jupyter)
+about how to connect -- ignore if you're using Jupyter through your
+browser.
+
 Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* updated note about data source
+* Sep 21: updated note about data source
+* Sep 21: add note about VS code
 
 ## Part 1: Setup
 
