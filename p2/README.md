@@ -28,6 +28,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 * Sep 21: updated note about data source
 * Sep 21: add note about VS code
+* Sep 25: note that for Jupyter cell answers, you need to put the Python expression computing the answer on the list line of the cell (prints are for your own debugging info and do not count as cell output)
 
 ## Part 1: Setup
 
