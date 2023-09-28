@@ -1,7 +1,10 @@
+from collections import OrderedDict
 import json, argparse
 import os, traceback, shutil
 
 import multiprocessing
+
+multiprocessing.set_start_method("fork")
 
 VERBOSE = False
 
@@ -10,11 +13,12 @@ TEST_DIR = None
 
 # full list of tests
 INIT = None
-TESTS = {}
+TESTS = OrderedDict()
 CLEANUP = None
 
+
 # dataclass for storing test object info
-class _unit_test():
+class _unit_test:
     def __init__(self, func, points, timeout, desc):
         self.func = func
         self.points = points
@@ -36,30 +40,37 @@ class _unit_test():
 
         ret.send((points, result))
 
+
 # init decorator
 def init(init_func):
     global INIT
     INIT = init_func
+    return init_func
+
 
 # test decorator
 def test(points, timeout=None, desc=""):
     def wrapper(test_func):
         TESTS[test_func.__name__] = _unit_test(test_func, points, timeout, desc)
+
     return wrapper
+
 
 # cleanup decorator
 def cleanup(cleanup_func):
     global CLEANUP
     CLEANUP = cleanup_func
+    return cleanup_func
+
 
 # lists all tests
 def list_tests():
-    for (test_name, test) in TESTS.items():
+    for test_name, test in TESTS.items():
         print(f"{test_name}({test.points}): {test.desc}")
+
 
 # run all tests
 def run_tests():
-
     # make a copy of the code
     shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True)
     os.chdir(TMP_DIR)
@@ -71,13 +82,13 @@ def run_tests():
     }
 
     for test_name, test in TESTS.items():
-        if VERBOSE: 
+        if VERBOSE:
             print(f"===== Running Test {test_name} =====")
 
         results["full_score"] += test.points
 
         ret_send, ret_recv = multiprocessing.Pipe()
-        proc = multiprocessing.Process(target=test.run, args=(ret_send, ))
+        proc = multiprocessing.Process(target=test.run, args=(ret_send,))
         proc.start()
         proc.join(test.timeout)
         if proc.is_alive():
@@ -86,13 +97,13 @@ def run_tests():
             result = "Timeout"
         else:
             (points, result) = ret_recv.recv()
-        
+
         if VERBOSE:
             print(result)
         results["score"] += points
         results["tests"][test_name] = result
 
-    assert(results["score"] <= results["full_score"])
+    assert results["score"] <= results["full_score"]
     if VERBOSE:
         print("===== Final Score =====")
         print(json.dumps(results, indent=4))
@@ -101,6 +112,7 @@ def run_tests():
     # cleanup code after all tests run
     shutil.rmtree(TMP_DIR)
     return results
+
 
 # save the result as json
 def save_results(results):
@@ -114,7 +126,9 @@ def tester_main():
     global VERBOSE, TEST_DIR
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dir", type=str, default = ".", help="path to your repository")
+    parser.add_argument(
+        "-d", "--dir", type=str, default=".", help="path to your repository"
+    )
     parser.add_argument("-l", "--list", action="store_true", help="list all tests")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
@@ -134,7 +148,7 @@ def tester_main():
     # run init
     if INIT:
         INIT()
-    
+
     # run tests
     results = run_tests()
     save_results(results)
