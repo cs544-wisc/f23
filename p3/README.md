@@ -1,206 +1,206 @@
-# DRAFT!  Don't start yet.
+# DRAFT! Don't start yet.
 
 # P3 (6% of grade): Key/Value Store Service
 
 ## Overview
 
-One of the simplest storage systems records the values associated with
-keys, much like a Python `dict`, but via a service that could be
-shared by code running on different computers.
+In the last project, we focused on creating a PyTorch regression model. We will now build upon this to provide an interface to use this model via a service that is able to be shared by code running on different computers.
 
-In this project, you'll build a simple K/V store server that records
-number values for different string keys.  Your server can use a Python
-`dict` for this purpose, but you'll need to use threads and locking
-for efficiency and safety.  A client will communicate with your server
-via RPC calls.
+In this project, you'll build a simple [model serving](https://deci.ai/deep-learning-glossary/model-serving/) server that that will be able to serve a regression model, like the one made in P2. Clients will be able to communicate with your server via RPC calls.
+
+Because executing the regression model may become expensive as the model grows in size, you will implement a caching mechanism for your service such that the model does not need to recompute the output of the same input. For this caching mechanism, you'll need to use threads and locking for efficiency and safety.
 
 Learning objectives:
-* communicate between clients and servers via gRPC
-* use locking for safety
-* cache the results of expensive operations for efficiency
-* measure performance statistics like cache hit rate and tail latency
-* deploy your code in a Docker container
+
+-   Communicate between clients and servers via gRPC
+-   Cache expensive compute results
+-   Use locking for safety
+-   Measure performance statistics like cache hit rate and tail latency
+-   Deploy your code in a Docker container
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* Feb 20: fixed contradictory directions about number of server threads (there should be 4)
+N/A
 
-## Part 1: gRPC Interface
+## Part 1: ModelServer class
 
-Read this guide for gRPC with Python:
-* https://grpc.io/docs/languages/python/quickstart/
-* https://grpc.io/docs/languages/python/basics/
+You will implement the following equation:
 
-Install the tools (be sure to upgrade pip first, as described in the directions):
+$y=\mathbf{a}\cdot \mathbf{x}$
 
-```
-pip3 install grpcio grpcio-tools
-```
+where $\mathbf{a}$ are some coefficients and $\mathbf{x}$ some data.
 
-Create a file called `numstore.proto` containing a service called `NumStore`, which contains two RPCs:
+Write a class with two methods: `SetCoefs(coefs)` and `Predict(x)` to perform dot product. Each parameter should be an array. Also check that the lengths match in `Predict`.
 
-1. `SetNum` takes a `key` (string) and `value` (int) as parameters and returns a `total` (int)
-2. `Fact` takes a `key` (string) as a parameter and returns a `value` (int), `hit` (bool), and `error` (string)
+### `SetCoefs(coefs)`
 
-Specify `syntax="proto3";` at the top of your file.  Build it:
+Your class should store these coefficients and invalidate the entire cache (more on this in a bit).
 
-```
-python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. numstore.proto
-```
+### `Predict(x)`
 
-Verify `numstore_pb2_grpc.py` was generated.
+Your server will able to predict the output of some given input vector corresponding to the inputs to be predicted on. Define the computation to be a simple dot-product of `coefs` and `x`.
+After computing the output, your server will store the output in a cache using `x` as the cache key (more on this in the next section, but you may use something like `dict`) for subsequent lookup. Please use `np.round` to 4 decimal places since very similar inputs will map to the same output (see also: [floating point limitations](https://docs.python.org/3/tutorial/floatingpoint.html)).
 
-## Part 2: Server Implementation
+Return an object with the following fields:
 
-Create a `server.py` file and add a class that inherits from
-`numstore_pb2_grpc.NumStoreServicer`.  It should override the two
-methods.
+-   `output`: the output of the dot product
+-   `cache_hit`: a boolean indicating whether or not the value was read from the cache
 
-At the end, add a `server()` function and call it (adapting the
-example from the gRPC documentation).  You can import `futures` like
-this:
-
-```python
-from concurrent import futures
-```
-
-Requirements:
-* have 4 worker threads
-* use `numstore_pb2_grpc.add_NumStoreServicer_to_server`
-* use port 5440
-
-### `SetNum(key, value)`
-
-Your server should have two globals variables, a `dict` of values, and an `int` that equals the sum of all the values in the `dict`.
-
-When `SetNum(key, value)` is called, it should set
-`YOUR_DICTS_NAME[key] = value` and update the variable storing the
-total sum of values.  It should return the new total.
-
-Requirement:
-* don't loop over all the entries in your dict each time to update the total (instead, compare the new value to the old value to determine how the total should change)
-
-### `Fact(key)`
-
-This should lookup the value from the global dictionary corresponding
-to that key, then return the factorial of that value.
-
-The error will normally be unset, but it should contain an error
-message if the key can't be found.
-
-### Manual testing:
-
-So far, the following client code should produce the expected output indicated by the comments:
-
-```python
-import sys
-import grpc
-import numstore_pb2, numstore_pb2_grpc
-
-port = "5440"
-addr = f"127.0.0.1:{port}"
-channel = grpc.insecure_channel(addr)
-stub = numstore_pb2_grpc.NumStoreStub(channel)
-
-# TEST SetNum
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="A", value=1))
-print(resp.total) # should be 1
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="B", value=10))
-print(resp.total) # should be 11
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="A", value=5))
-print(resp.total) # should be 15
-resp = stub.SetNum(numstore_pb2.SetNumRequest(key="B", value=0))
-print(resp.total) # should be 5
-
-# TEST Fact
-resp = stub.Fact(numstore_pb2.FactRequest(key="A"))
-print(resp.value) # should be 120
-```
+If there is some kind of exception or `x` does not match do not match the expected length, return unsuccessfully with an error message.
 
 ### Caching
 
-For large numbers, it may be slow to compute the factorial.  Add a
-structure to remember previously computed answers for specific
-numbers.
+Though our model is small, a more complex model may be computationally slow, especially in the case where the model requires a GPU (or even a cluster of computers!) to run.
+
+Add an [LRU cache](<https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)>) to _remember_ previously computed outputs for specific keys. Note that dictionary keys _must_ be hashable, and `np.array`s are not hashable.
 
 Requirements:
-* the cache should hold a maximum of 10 entries
-* write a comment specifying your eviction policy (could be random, LRU, FIFO, something you make up...)
-* check before doing the calculation for factorial
-* in the return value, use `hit=True` or `hit=False` to indicate whether or not the cache was used for the answer
+
+-   The cache should hold a maximum of 10 entries
+-   Check if a key is present during prediction before calculating with the model
+-   Use `cache_hit=True` or `cache_hit=False` to indicate whether or not the value was read from the cache during prediction
+
+### Manual Testing
+
+Use `test_modelserver.py` and verify that it produces the expected output indicated by the comments.
+
+## Part 2: gRPC Interface
+
+Read this guide for gRPC with Python:
+
+-   https://grpc.io/docs/languages/python/quickstart/
+-   https://grpc.io/docs/languages/python/basics/
+
+Install the tools (be sure to upgrade pip first, as described in the directions):
+
+```shell
+pip3 install grpcio grpcio-tools
+```
+
+Create a file called `modelserver.proto` containing a service called `ModelServer`.
+Specify `syntax="proto3";` at the top of your file.
+`ModelServer` will contain 2 RPCs:
+
+1. `SetCoefs`
+    - Parameters: `coefs` (`repeated float`)
+    - Returns: `success` (`bool`) and `error` (`string`)
+2. `Predict`
+    - Parameters: `inputs` (`repeated float`)
+    - Returns: `output` (`float`), `cache_hit` (`bool`), and `error` (`string`)
+
+You can build your `.proto` with:
+
+```shell
+python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. modelserver.proto
+```
+
+Then, verify `modelserver_pb2_grpc.py` was generated.
+
+## Part 3: gRPC Server Implementation
+
+Create a `server.py` file and add a class that inherits from `modelserver_pb2_grpc.ModelServerServicer`. It should override the two methods. Please re-use the `ModelServer` implementations from **Part 1** here (it is recommended to change the class definition and method signatures to match the `ModelServerServicer` base class).
+
+At the end, add a `serve()` function and call it (adapting the [example from the gRPC documentation](https://grpc.io/docs/languages/python/basics/#starting-the-server)).
+
+Your server should:
+
+-   Have 4 worker threads
+-   Register with `modelserver_pb2_grpc.add_ModelServerServicer_to_server`
+-   Use port 5440
 
 ### Locking
 
-Your server has 4 threads, so use a lock (https://docs.python.org/3/library/threading.html#threading.Lock) when accessing any global variables from `SetNum` or `Fact`.
+Your server will have 4 threads, so use a [Lock](https://docs.python.org/3/library/threading.html#threading.Lock) when accessing **any** global variables from `SetCoefs` or `Predict`
 
-Requirements:
-* the lock should protect any access to shared structures
-* the lock should always get released, even if there is an exception
-* the lock should NOT be held when factorials are being calculated
+The lock should:
 
-## Part 3: Client
+-   Protect any access to shared structures
+-   Get released at the end of each call, even in the event of any raised exceptions
 
-The client should start some threads or processes that send random requests to the server.  The port of the server should be specified on the command line, like this:
+### Manual Testing
 
-```
+Use `test_server.py` and verify that it produces the expected output indicated by the comments.
+
+## Part 4: gRPC Client - Random Workload
+
+The client should start some threads or processes that send random requests to the server. The port of the server should be specified on the command line, like this:
+
+```shell
 python3 client.py 5440
 ```
 
-Requirements:
-* there should be 8 threads/processes
-* each thread/process should send 100 random requests to the server
-* for each request, randomly decide between SetNum and Fact (50/50 mix)
-* for each request, randomly choose a key (from a list of 100 possible keys)
-* for SetNum requests, randomly select a number between 1 and 15
-
-The client should then print some stats at the end.
+Note that the random workload is _only_ run if `client.py` is invoked directly (and not if imported in another `.py` file).
 
 Requirements:
-* print cache hit rate
-* print p50 response time
-* print p99 response time
-* it should be clear from the prints what each output number represents
 
-Feel free to install `numpy` if that helps with computing percentiles.
+-   There should be 8 threads
 
-## Part 4: Docker Deployment
+-   Each thread should send 1000 random requests to the server
+-   For each request, randomly decide between `SetCoefs` (0.1) and `Predict` (0.9) proportionally
+-   For each `SetCoefs` request, randomly choose a coefficient vector of length 10 with random floats between -10 and 10
+-   For `Predict` requests, select from predefined list of 20 different inputs (you can implement this as first initializing a 20x10 random uniform matrix and then selecting a random row during `Predict`, or something equivalent).
 
-You should write a `Dockerfile` to build an image that runs your server.py.
+The client should then print the statistics in JSON format at the end:
 
-Requirements:
-* it should be possible to run `docker build -t p2 .`
-* it should be possible to run your server like this `docker run -p 54321:5440 p2`
+```json
+{
+    "cache_hit_rate": 0,
+    "p50_response_time": 0,
+    "p99_response_time": 0
+}
+```
+
+Feel free to use `numpy` for computing percentiles.
+
+## Part 5: gRPC Client - Text File Workload
+
+If your client is invoked in the following way: `python3 client.py 5440 workload.json`, your client should:
+
+1. Parse the file as JSON
+2. Read each element in the `requests` array
+    - Example element: `{"type": "SetCoefs", "value": {"coefs": [1, 2, 3]}}`
+3. Make the corresponding gRPC call to the server (based on `type`), setting the `value` of the request as necessary
+4. Print out the Response
+
+## Part 6: Docker Deployment
+
+You should write a `Dockerfile` to build an image that runs your server.
+
+Your Docker image should:
+
+-   Build via `docker build -t p3 .`
+-   Run via `docker run -p 54321:5440 p3` (i.e., you can map any external port to the internal port of 5440)
 
 ## Submission
 
 You should organize and commit your files such that we can run the code in your repo like this:
 
+```shell
+python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. modelserver.proto
+docker build -t p3 .
+export PORT=54321
+docker run -d -p $PORT:5440 p3
+python3 client.py $PORT > statistics.json
+python3 client.py $PORT workload.json
+python3 autograder.py
 ```
-python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. numstore.proto
-docker build -t p2 .
-docker run -d -p 54321:5440 p2
-python3 client.py 54321 > out.txt
-cat out.txt
-```
 
-Be sure to test the above, and commit the out.txt file you generated
-in the process.
+Be sure to test the above, and commit the `statistics.json` file you generated in the process.
 
-## Approximate Rubric:
+## Approximate Rubric
 
-The following is approximately how we will grade, but we may make
-changes if we overlooked an important part of the specification or did
-not consider a common mistake.
+The following is approximately how we will grade, but we may make changes if we overlooked an important part of the specification or did not consider a common mistake.
 
-1. [x/1] SetNum and Fact have specified interface (part 1)
-2. [x/1] **SetNum** is logically correct (part 2)
-3. [x/1] **Fact** is logically correct (part 2)
-4. [x/1] Fact **caching** is correct and documented (part 2)
-5. [x/1] SetNum and Fact **locking** is correct (part 2)
-6. [x/1] server listens on **port 5440** with **4 workers** (part 2)
-7. [x/1] the client sends requests to the **specified port** from **8 tasks** (part 3)
-8. [x/1] the random workload is 100 requests per server, 50/50 SetNum/Fact, over 100 keys, and values between 1 and 15 (part 3)
-9. [x/1] hit rate and response time are correctly computed and displayed (part 3)
-10. [x/1] a **Dockerfile** can be used to dockerize server.py (part 4)
+1. [X/1] `SetCoefs` and `Predict` have specified interface
+2. [X/1] `SetCoefs` is logically correct
+3. [X/1] `Predict` is logically correct
+4. [X/1] `Predict` **caching** is correct
+5. [X/1] `SetCoefs` and `Predict` **locking** is correct
+6. [X/1] Server listens on **port 5440** with **4 workers**
+7. [X/1] Client sends requests to the **specified port** from **8 threads**
+8. [X/1] Random workload follows specification
+9. [X/1] Workload statistics are correctly computed
+10. [X/1] Text file workload is properly read, exucuted, and printed
+11. [X/1] **Dockerfile** correctly containerizes the server
