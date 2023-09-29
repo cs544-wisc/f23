@@ -139,7 +139,7 @@ You can do this directly in the bottom of your server.py, or within a
 `main` function; feel free to move imports to the top of your file if
 you like.
 
-### Manual Testing
+## Part 3: Client
 
 Write a gRPC client named `client.py` that can be run like this:
 
@@ -161,12 +161,18 @@ The client can print other stuff, but its very last line of output should be the
 
 Use `test_server.py` and verify that it produces the expected output indicated by the comments.
 
-## Deployment and Submission
+## Part 4: Deployment
 
 You should write a `Dockerfile` to build an image with everything needed to run both your server and client.  Your Docker image should:
 
 * Build via `docker build -t p3 .`
 * Run via `docker run -p 127.0.0.1:54321:5440 p3` (i.e., you can map any external port to the internal port of 5440)
+
+You should then be able to run the client outside of the container
+(using port 54321), or use a `docker exec` to enter the container and
+run the client on port 5440.
+
+## Submission
 
 You should organize and commit your files such that we can run the code in your repo like this:
 
