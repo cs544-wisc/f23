@@ -4,91 +4,98 @@
 
 ## Overview
 
-In the last project, we focused on creating a PyTorch regression model. We will now build upon this to provide an interface to use this model via a service that is able to be shared by code running on different computers.
+In the last project, you trained a simple PyTorch model using `SGD`.
+Now, you'll write a program that can load a model (similar to the one
+from P2) and use it to make predictions upon request (this kind of
+program is called a *model server*).
 
-In this project, you'll build a simple [model serving](https://deci.ai/deep-learning-glossary/model-serving/) server that that will be able to serve a regression model, like the one made in P2. Clients will be able to communicate with your server via RPC calls.
+Your model server will use multiple threads and cache the predictions
+(to save effort when the server is given the same inputs repeatedly).
 
-Because executing the regression model may become expensive as the model grows in size, you will implement a caching mechanism for your service such that the model does not need to recompute the output of the same input. For this caching mechanism, you'll need to use threads and locking for efficiency and safety.
+You'll start by writing your code in a Python class and calling the
+methods in it.  By the end, though, your model server will run in a
+Docker container and receive requests over a network (via gRPC calls).
 
 Learning objectives:
 
--   Communicate between clients and servers via gRPC
--   Cache expensive compute results
--   Use locking for safety
--   Measure performance statistics like cache hit rate and tail latency
--   Deploy your code in a Docker container
+* Use threads and locks correctly
+* Cache expensive compute results with an LRU policy
+* Measure performance statistics like cache hit rate and tail latency
+* Communicate between clients and servers via gRPC
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-N/A
+* none yet
 
-## Part 1: ModelServer class
+## Part 1: Prediction Cache
 
-You will implement the following equation:
+### `PredictionCache` class
 
-$y=\mathbf{a}\cdot \mathbf{x}$
+Write a class called `PredictionCache` with two methods: `SetCoefs(coefs)`
+and `Predict(X)` in a file called `server.py`.
 
-where $\mathbf{a}$ are some coefficients and $\mathbf{x}$ some data.
+`SetCoefs` will store `coefs` in the PredictionCache object; `coefs` will
+be a PyTorch tensor containing a vertical vector of `float32`s.
 
-Write a class with two methods: `SetCoefs(coefs)` and `Predict(x)` to perform dot product. Each parameter should be an array. Also check that the lengths match in `Predict`.
+`Predict` will take a 2D tensor and use it to predict `y` values
+(which it will return) using the previously set `coefs`, like this:
 
-### `SetCoefs(coefs)`
+```
+y = X @ coefs
+```
 
-Your class should store these coefficients and invalidate the entire cache (more on this in a bit).
-
-### `Predict(x)`
-
-Your server will able to predict the output of some given input vector corresponding to the inputs to be predicted on. Define the computation to be a simple dot-product of `coefs` and `x`.
-After computing the output, your server will store the output in a cache using `x` as the cache key (more on this in the next section, but you may use something like `dict`) for subsequent lookup. Please use `np.round` to 4 decimal places since very similar inputs will map to the same output (see also: [floating point limitations](https://docs.python.org/3/tutorial/floatingpoint.html)).
-
-Return an object with the following fields:
-
--   `output`: the output of the dot product
--   `cache_hit`: a boolean indicating whether or not the value was read from the cache
-
-If there is some kind of exception or `x` does not match do not match the expected length, return unsuccessfully with an error message.
+In Python, a return statement can have multiple values; in this case it should have two:
+1. the predict y values
+2. a `bool`, indicating whether PredictionCache could make the prediction using a cache (see below)
 
 ### Caching
 
-Though our model is small, a more complex model may be computationally slow, especially in the case where the model requires a GPU (or even a cluster of computers!) to run.
+Add code for an LRU cache to your `PredictionCache` class.  Requirements:
 
-Add an [LRU cache](<https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)>) to _remember_ previously computed outputs for specific keys. Note that dictionary keys _must_ be hashable, and `np.array`s are not hashable.
-
-Requirements:
-
--   The cache should hold a maximum of 10 entries
--   Check if a key is present during prediction before calculating with the model
--   Use `cache_hit=True` or `cache_hit=False` to indicate whether or not the value was read from the cache during prediction
-
-### Manual Testing
+* `Predict` should round the X values to 4 decimal places before using them for anything (https://pytorch.org/docs/stable/generated/torch.round.html); the idea is to be able to use cached results for inputs that are approximately the same
+* The cache should hold a maximum of 10 entries
+* Whenever `SetCoefs` is called, *invalidate* the cache (meaning clear out all the entries in the cache) because we won't expect the same predictions for the same inputs now that the model itself has changes
+* The second value returned by `Predict` should indicate whether there was a hit
+* When adding an `X` value to a caching dictionary or looking it up, first convert X to a tuple, like this: `tuple(A.flatten().tolist())`.  The reason is that PyTorch tensors don't work as you would expect as keys in a Python `dict` (but tuples do work)
 
 Use `test_modelserver.py` and verify that it produces the expected output indicated by the comments.
 
-## Part 2: gRPC Interface
+### Locking
+
+There will eventually be multiple threads calling methods in
+`PredictionCache` simultaneously, so add a lock.
+
+The lock should:
+* be held when any shared data (for example, attributes in the class) are modified
+* get released at the end of each call, even if there is an exception
+
+## Part 2: Model Server
+
+### Protocol
 
 Read this guide for gRPC with Python:
 
--   https://grpc.io/docs/languages/python/quickstart/
--   https://grpc.io/docs/languages/python/basics/
+* https://grpc.io/docs/languages/python/quickstart/
+* https://grpc.io/docs/languages/python/basics/
 
 Install the tools (be sure to upgrade pip first, as described in the directions):
 
 ```shell
-pip3 install grpcio grpcio-tools
+pip3 install grpcio==1.58.0 grpcio-tools==1.58.0
 ```
 
-Create a file called `modelserver.proto` containing a service called `ModelServer`.
-Specify `syntax="proto3";` at the top of your file.
+Create a file called `modelserver.proto` containing a service called
+`ModelServer`.  Specify `syntax="proto3";` at the top of your file.
 `ModelServer` will contain 2 RPCs:
 
 1. `SetCoefs`
     - Parameters: `coefs` (`repeated float`)
-    - Returns: `success` (`bool`) and `error` (`string`)
+    - Returns: `error` (`string`)
 2. `Predict`
-    - Parameters: `inputs` (`repeated float`)
-    - Returns: `output` (`float`), `cache_hit` (`bool`), and `error` (`string`)
+    - Parameters: `X` (`repeated float`)
+    - Returns: `y` (`float`), `hit` (`bool`), and `error` (`string`)
 
 You can build your `.proto` with:
 
@@ -96,111 +103,80 @@ You can build your `.proto` with:
 python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. modelserver.proto
 ```
 
-Then, verify `modelserver_pb2_grpc.py` was generated.
+Verify `modelserver_pb2_grpc.py` was generated.
 
-## Part 3: gRPC Server Implementation
+### Server
 
-Create a `server.py` file and add a class that inherits from `modelserver_pb2_grpc.ModelServerServicer`. It should override the two methods. Please re-use the `ModelServer` implementations from **Part 1** here (it is recommended to change the class definition and method signatures to match the `ModelServerServicer` base class).
+Add a `ModelServer` class to `server.py` that inherits from 
+`modelserver_pb2_grpc.ModelServerServicer`.
 
-At the end, add a `serve()` function and call it (adapting the [example from the gRPC documentation](https://grpc.io/docs/languages/python/basics/#starting-the-server)).
+`ModelServer` should override the two methods of `ModelServerServicer`
+and use a `PredictionCache` to help calculate the answers.  You'll
+need to manipulate the data to translate back and forth between the
+`repeated float` values from gRPC and the tensors in the shapes needed
+by `PredictionCache`.  Although `PredictionCache.Predict` can work on
+multiple rows of `X` data at once, the `X` values received by
+`ModelServer` should be arranged as a single row.
 
-Your server should:
+The `error` fields should contain the empty string `""` when all is
+well, or an error message that can help you debug when there was an
+exception or other issue (otherwise exceptions happening on the server
+side won't show up anywhere, which makes troubleshooting difficult).
 
--   Have 4 worker threads
--   Register with `modelserver_pb2_grpc.add_ModelServerServicer_to_server`
--   Use port 5440
+Start your server like this:
 
-### Locking
+```python
+import grpc
+from concurrent import futures
+server = grpc.server(futures.ThreadPoolExecutor(max_workers=4), options=(('grpc.so_reuseport', 0),))
+modelserver_pb2_grpc.add_ModelServerServicer_to_server(ModelServer(), server)
+server.add_insecure_port("[::]:5440", )
+server.start()
+server.wait_for_termination()
+```
 
-Your server will have 4 threads, so use a [Lock](https://docs.python.org/3/library/threading.html#threading.Lock) when accessing **any** global variables from `SetCoefs` or `Predict`
-
-The lock should:
-
--   Protect any access to shared structures
--   Get released at the end of each call, even in the event of any raised exceptions
+You can do this directly in the bottom of your server.py, or within a
+`main` function; feel free to move imports to the top of your file if
+you like.
 
 ### Manual Testing
 
+Write a gRPC client named `client.py` that can be run like this:
+
+```
+python3 client.py <PORT> <COEF> <THREAD1-WORK.csv> <THREAD2-WORK.csv> ...
+```
+
+For example, say you run `python3 client.py 5440 "1.0,2.0,3.0" x1.csv x2.csv x3.csv`.
+
+Your client should do the following, in order:
+
+1. connect to the server at port 5440
+2. call `SetCoef` with [1.0,2.0,3.0]
+3. launch three threads, each responsible for one of the 3 CSV files
+4. each thread should loop over the rows in its CSV files.  Each row will floats that should be used to make a `Predict` call to the server.  The threads should collect stats about the numbers of hits/misses.
+5. the main thread should call `join` to wait until the 3 threads are finished
+
+The client can print other stuff, but its very last line of output should be the overall hitrate.  For example, if the hit/miss counts for the three threads are 1/1, 0,1, and 3/8, then the overall hit rate would be (1+0+3) / (1+1+8) = 0.4.
+
 Use `test_server.py` and verify that it produces the expected output indicated by the comments.
 
-## Part 4: gRPC Client - Random Workload
+## Deployment and Submission
 
-The client should start some threads or processes that send random requests to the server. The port of the server should be specified on the command line, like this:
+You should write a `Dockerfile` to build an image with everything needed to run both your server and client.  Your Docker image should:
 
-```shell
-python3 client.py 5440
-```
-
-Note that the random workload is _only_ run if `client.py` is invoked directly (and not if imported in another `.py` file).
-
-Requirements:
-
--   There should be 8 threads
-
--   Each thread should send 1000 random requests to the server
--   For each request, randomly decide between `SetCoefs` (0.1) and `Predict` (0.9) proportionally
--   For each `SetCoefs` request, randomly choose a coefficient vector of length 10 with random floats between -10 and 10
--   For `Predict` requests, select from predefined list of 20 different inputs (you can implement this as first initializing a 20x10 random uniform matrix and then selecting a random row during `Predict`, or something equivalent).
-
-The client should then print the statistics in JSON format at the end:
-
-```json
-{
-    "cache_hit_rate": 0,
-    "p50_response_time": 0,
-    "p99_response_time": 0
-}
-```
-
-Feel free to use `numpy` for computing percentiles.
-
-## Part 5: gRPC Client - Text File Workload
-
-If your client is invoked in the following way: `python3 client.py 5440 workload.json`, your client should:
-
-1. Parse the file as JSON
-2. Read each element in the `requests` array
-    - Example element: `{"type": "SetCoefs", "value": {"coefs": [1, 2, 3]}}`
-3. Make the corresponding gRPC call to the server (based on `type`), setting the `value` of the request as necessary
-4. Print out the Response
-
-## Part 6: Docker Deployment
-
-You should write a `Dockerfile` to build an image that runs your server.
-
-Your Docker image should:
-
--   Build via `docker build -t p3 .`
--   Run via `docker run -p 54321:5440 p3` (i.e., you can map any external port to the internal port of 5440)
-
-## Submission
+* Build via `docker build -t p3 .`
+* Run via `docker run -p 127.0.0.1:54321:5440 p3` (i.e., you can map any external port to the internal port of 5440)
 
 You should organize and commit your files such that we can run the code in your repo like this:
 
 ```shell
 python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. modelserver.proto
 docker build -t p3 .
-export PORT=54321
-docker run -d -p $PORT:5440 p3
-python3 client.py $PORT > statistics.json
-python3 client.py $PORT workload.json
+docker run -d -p 127.0.0.1:54321:5440 p3
 python3 autograder.py
 ```
 
-Be sure to test the above, and commit the `statistics.json` file you generated in the process.
+## Tester
 
-## Approximate Rubric
-
-The following is approximately how we will grade, but we may make changes if we overlooked an important part of the specification or did not consider a common mistake.
-
-1. [X/1] `SetCoefs` and `Predict` have specified interface
-2. [X/1] `SetCoefs` is logically correct
-3. [X/1] `Predict` is logically correct
-4. [X/1] `Predict` **caching** is correct
-5. [X/1] `SetCoefs` and `Predict` **locking** is correct
-6. [X/1] Server listens on **port 5440** with **4 workers**
-7. [X/1] Client sends requests to the **specified port** from **8 threads**
-8. [X/1] Random workload follows specification
-9. [X/1] Workload statistics are correctly computed
-10. [X/1] Text file workload is properly read, exucuted, and printed
-11. [X/1] **Dockerfile** correctly containerizes the server
+Details coming soon...
