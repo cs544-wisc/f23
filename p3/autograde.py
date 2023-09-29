@@ -62,11 +62,16 @@ def run_docker_autograde():
 def docker_test(test_func):
     @wraps(test_func)
     def wrapper():
-        docker_test_json = (Path.cwd() / "docker_test.json").resolve(strict=True)
+        docker_test_json = Path.cwd() / "docker_test.json"
         if not docker_test_json.exists():
             return "FAIL: docker_test.json not found"
         with open(docker_test_json, "r", encoding="utf-8") as json_file:
             json_contents = json.load(json_file)
+            if (
+                "tests" not in json_contents
+                or test_func.__name__ not in json_contents["tests"]
+            ):
+                return f"FAIL: {test_func.__name__} not found in docker_test.json"
             score_value = json_contents["tests"][test_func.__name__]
             if type(score_value) is list:
                 for line in score_value:
@@ -85,56 +90,62 @@ def docker_test(test_func):
 
 @test(10)
 @docker_test
-def correct_protobuf_interface():
+def protobuf_interface():
     pass
 
 
 @test(10)
 @docker_test
-def correct_set_coefs():
+def set_coefs():
     pass
 
 
 @test(10)
 @docker_test
-def correct_predict():
+def predict():
     pass
 
 
 @test(10)
 @docker_test
-def correct_predict_single_call_cache():
+def predict_single_call_cache():
     pass
 
 
 @test(10)
 @docker_test
-def correct_predict_full_cache_eviction():
+def predict_full_cache_eviction():
     pass
 
 
 @test(10)
 @docker_test
-def correct_set_coefs_cache_invalidation():
+def set_coefs_cache_invalidation():
     pass
 
 
 @test(10)
-def client_random_workload_statistics():
-    statistics_path = (Path.cwd() / "statistics.json").resolve(strict=True)
-    with open(statistics_path, "r", encoding="utf-8") as statistics_file:
-        statistics = json.load(statistics_file)
-        assert list(statistics.keys()) == [
-            "cache_hit_rate",
-            "p50_response_time",
-            "p99_response_time",
-        ], statistics.keys()
+@docker_test
+def client_workload1():
+    pass
 
-        assert statistics["cache_hit_rate"] > 0, statistics["cache_hit_rate"]
-        assert statistics["cache_hit_rate"] < 1, statistics["cache_hit_rate"]
-        assert statistics["p50_response_time"] > 0, statistics["p50_response_time"]
-        assert statistics["p99_response_time"] > 0, statistics["p99_response_time"]
-        assert statistics["p99_response_time"] > statistics["p50_response_time"]
+
+@test(10)
+@docker_test
+def client_workload2():
+    pass
+
+
+@test(10)
+@docker_test
+def client_workload3():
+    pass
+
+
+@test(10)
+@docker_test
+def client_workload4():
+    pass
 
 
 if __name__ == "__main__":

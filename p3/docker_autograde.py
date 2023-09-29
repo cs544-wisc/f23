@@ -1,7 +1,9 @@
 from functools import wraps
+from subprocess import check_output
 
 from google.protobuf.descriptor import FieldDescriptor
 import grpc
+import numpy as np
 from modelserver_pb2 import (
     PredictRequest,  # type: ignore
     PredictResponse,  # type: ignore
@@ -12,13 +14,14 @@ from modelserver_pb2_grpc import ModelServerStub
 
 from tester import test, tester_main
 
+PORT = 5440
+
 
 def with_client():
     def decorator(test_func):
         @wraps(test_func)
         def wrapper():
-            port = "5440"
-            addr = f"127.0.0.1:{port}"
+            addr = f"127.0.0.1:{PORT}"
             channel = grpc.insecure_channel(addr)
             stub = ModelServerStub(channel)
             return test_func(stub)
@@ -28,34 +31,58 @@ def with_client():
     return decorator
 
 
+def client_workload(coefs, *csv_files):
+    def decorator(test_func):
+        @wraps(test_func)
+        def wrapper():
+            coefs_str = ",".join(coefs.astype(str))
+
+            output = (
+                check_output(["python3", "client.py", str(PORT), coefs_str, *csv_files])
+                .decode("utf-8")
+                .splitlines()
+            )
+
+            assert len(output) >= 1, f"Expected at least 1 line of output"
+
+            last_line = output[-1]
+
+            try:
+                hit_rate = float(last_line)
+            except ValueError:
+                assert False, f"Expected last line to be a float, but got {last_line}"
+
+            return test_func(hit_rate)
+
+        return wrapper
+
+    return decorator
+
+
 @test(10)
-def correct_protobuf_interface():
+def protobuf_interface():
     descriptors = {
         SetCoefsRequest.DESCRIPTOR: {
             "coefs": [FieldDescriptor.LABEL_REPEATED, FieldDescriptor.CPPTYPE_FLOAT]
         },
         SetCoefsResponse.DESCRIPTOR: {
-            "success": [
-                FieldDescriptor.LABEL_OPTIONAL,
-                FieldDescriptor.CPPTYPE_BOOL,
-            ],
             "error": [
                 FieldDescriptor.LABEL_OPTIONAL,
                 FieldDescriptor.CPPTYPE_STRING,
             ],
         },
         PredictRequest.DESCRIPTOR: {
-            "inputs": [
+            "X": [
                 FieldDescriptor.LABEL_REPEATED,
                 FieldDescriptor.CPPTYPE_FLOAT,
             ],
         },
         PredictResponse.DESCRIPTOR: {
-            "output": [
+            "y": [
                 FieldDescriptor.LABEL_OPTIONAL,
                 FieldDescriptor.CPPTYPE_FLOAT,
             ],
-            "cache_hit": [
+            "hit": [
                 FieldDescriptor.LABEL_OPTIONAL,
                 FieldDescriptor.CPPTYPE_BOOL,
             ],
@@ -86,63 +113,90 @@ def correct_protobuf_interface():
 
 @test(10)
 @with_client()
-def correct_set_coefs(stub: ModelServerStub):
+def set_coefs(stub: ModelServerStub):
     response = stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
-    assert str(response) == "success: true\n", response
+    assert str(response) == "", response
     response = stub.SetCoefs(SetCoefsRequest(coefs=[2, 3, 4]))
-    assert str(response) == "success: true\n", response
+    assert str(response) == "", response
 
 
 @test(10)
 @with_client()
-def correct_predict(stub: ModelServerStub):
+def predict(stub: ModelServerStub):
     stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
-    response = stub.Predict(PredictRequest(inputs=[1, 2, 3]))
-    assert str(response) == "output: 14\n", response
+    response = stub.Predict(PredictRequest(X=[1, 2, 3]))
+    assert str(response) == "y: 14\n", response
 
 
 @test(10)
 @with_client()
-def correct_predict_single_call_cache(stub: ModelServerStub):
+def predict_single_call_cache(stub: ModelServerStub):
     stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
 
     # Check one subsequent call is cached
-    response = stub.Predict(PredictRequest(inputs=[1, 2, 3]))
-    assert str(response) == "output: 14\n", response
-    response = stub.Predict(PredictRequest(inputs=[1, 2, 3]))
-    assert str(response) == "output: 14\ncache_hit: true\n", response
+    response = stub.Predict(PredictRequest(X=[1, 2, 3]))
+    assert str(response) == "y: 14\n", response
+    response = stub.Predict(PredictRequest(X=[1, 2, 3]))
+    assert str(response) == "y: 14\nhit: true\n", response
 
 
 @test(10)
 @with_client()
-def correct_predict_full_cache_eviction(stub: ModelServerStub):
+def predict_full_cache_eviction(stub: ModelServerStub):
     stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
-    stub.Predict(PredictRequest(inputs=[1, 2, 3]))
+    stub.Predict(PredictRequest(X=[1, 2, 3]))
 
     # Fill the cache
     for i in range(10):
-        response = stub.Predict(PredictRequest(inputs=[3, 2, i]))
+        response = stub.Predict(PredictRequest(X=[3, 2, i]))
         output = 1 * 3 + 2 * 2 + 3 * i
-        assert str(response) == f"output: {output}\n", response
+        assert str(response) == f"y: {output}\n", response
 
     # Check first call is no longer cached
-    response = stub.Predict(PredictRequest(inputs=[1, 2, 3]))
-    assert str(response) == "output: 14\n", response
+    response = stub.Predict(PredictRequest(X=[1, 2, 3]))
+    assert str(response) == "y: 14\n", response
 
 
 @test(10)
 @with_client()
-def correct_set_coefs_cache_invalidation(stub: ModelServerStub):
+def set_coefs_cache_invalidation(stub: ModelServerStub):
     stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
 
-    response = stub.Predict(PredictRequest(inputs=[1, 2, 3]))
-    assert str(response) == "output: 14\n", response
+    response = stub.Predict(PredictRequest(X=[1, 2, 3]))
+    assert str(response) == "y: 14\n", response
 
     # Invalidate cache
     stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
 
-    response = stub.Predict(PredictRequest(inputs=[1, 2, 3]))
-    assert str(response) == "output: 14\n", response
+    response = stub.Predict(PredictRequest(X=[1, 2, 3]))
+    assert str(response) == "y: 14\n", response
+
+
+@test(10)
+@client_workload(np.array([1, 2, 3]), "workload/workload1.csv")
+def client_workload_1(hit_rate):
+    expected_hit_rate = 0
+    assert expected_hit_rate == hit_rate, (
+        f"Expected cache hit rate to be {expected_hit_rate}, " f"but got {hit_rate}"
+    )
+
+
+@test(10)
+@client_workload(np.array([1, 2, 3]), "workload/workload2.csv")
+def client_workload_2(hit_rate):
+    expected_hit_rate = 0
+    assert expected_hit_rate == hit_rate, (
+        f"Expected cache hit rate to be {expected_hit_rate}, " f"but got {hit_rate}"
+    )
+
+
+@test(10)
+@client_workload(
+    np.array([1, 2, 3]), "workload/workload1.csv", "workload/workload2.csv"
+)
+def client_workload_3(_hit_rate):
+    # Due to multithreading, this test is not deterministic
+    assert 0 <= _hit_rate <= 1, f"Expected hit rate to be between 0 and 1"
 
 
 if __name__ == "__main__":
