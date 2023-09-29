@@ -178,8 +178,6 @@ You should organize and commit your files such that we can run the code in your 
 
 ```shell
 python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. modelserver.proto
-docker build -t p3 .
-docker run -d -p 127.0.0.1:54321:5440 p3
 python3 autograder.py
 ```
 
