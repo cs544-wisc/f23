@@ -41,7 +41,7 @@ def docker_build_run():
             "p3_autograde",
         ]
     )
-    sleep(1)  # wait for server to start
+    sleep(2)  # wait for server to start
 
 
 @test(0)
@@ -71,7 +71,9 @@ def docker_test(test_func):
                 "tests" not in json_contents
                 or test_func.__name__ not in json_contents["tests"]
             ):
-                return f"FAIL: {test_func.__name__} not found in docker_test.json"
+                fail_str = f"FAIL: {test_func.__name__} not found in docker_test.json"
+                print(fail_str, file=stderr)
+                return fail_str
             score_value = json_contents["tests"][test_func.__name__]
             if type(score_value) is list:
                 for line in score_value:
@@ -126,25 +128,19 @@ def set_coefs_cache_invalidation():
 
 @test(10)
 @docker_test
-def client_workload1():
+def client_workload_1():
     pass
 
 
 @test(10)
 @docker_test
-def client_workload2():
+def client_workload_2():
     pass
 
 
 @test(10)
 @docker_test
-def client_workload3():
-    pass
-
-
-@test(10)
-@docker_test
-def client_workload4():
+def client_workload_3():
     pass
 
 

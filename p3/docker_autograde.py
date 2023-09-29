@@ -184,7 +184,7 @@ def client_workload_1(hit_rate):
 @test(10)
 @client_workload(np.array([1, 2, 3]), "workload/workload2.csv")
 def client_workload_2(hit_rate):
-    expected_hit_rate = 0
+    expected_hit_rate = 2 / 12
     assert expected_hit_rate == hit_rate, (
         f"Expected cache hit rate to be {expected_hit_rate}, " f"but got {hit_rate}"
     )
