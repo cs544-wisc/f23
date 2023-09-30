@@ -1,4 +1,5 @@
 from functools import wraps
+import re
 from subprocess import check_output
 
 from google.protobuf.descriptor import FieldDescriptor
@@ -126,6 +127,9 @@ def predict(stub: ModelServerStub):
     stub.SetCoefs(SetCoefsRequest(coefs=[1, 2, 3]))
     response = stub.Predict(PredictRequest(X=[1, 2, 3]))
     assert str(response) == "y: 14\n", response
+    stub.SetCoefs(SetCoefsRequest(coefs=[0.70176, 0.27204, 0.11234]))
+    response = stub.Predict(PredictRequest(X=[0.92017, 0.92842, 0.6054]))
+    assert re.match(r"^y: 0.9663\d+\n$", str(response)), response
 
 
 @test(10)
