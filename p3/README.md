@@ -21,6 +21,8 @@ Before starting, please review the [general project directions](../projects.md).
 
 -   Sept 30: Match up `test_predict_cache.py` and `test_modelserver.py` with specification
 -   Sept 30: Update Testing section
+-   Sept 30: Add additional `Predict` test case in `docker_autograde.py`
+-   Sept 30: Add comments in `autograde.py`
 
 ## Part 1: Prediction Cache
 
