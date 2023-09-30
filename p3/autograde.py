@@ -93,54 +93,63 @@ def docker_test(test_func):
 @test(10)
 @docker_test
 def protobuf_interface():
+    # see docker_autograde.py:protobuf_interface
     pass
 
 
 @test(10)
 @docker_test
 def set_coefs():
+    # see docker_autograde.py:set_coefs
     pass
 
 
 @test(10)
 @docker_test
 def predict():
+    # see docker_autograde.py:predict
     pass
 
 
 @test(10)
 @docker_test
 def predict_single_call_cache():
+    # see docker_autograde.py:predict_single_call_cache
     pass
 
 
 @test(10)
 @docker_test
 def predict_full_cache_eviction():
+    # see docker_autograde.py:predict_full_cache_eviction
     pass
 
 
 @test(10)
 @docker_test
 def set_coefs_cache_invalidation():
+    # see docker_autograde.py:set_coefs_cache_invalidation
     pass
 
 
 @test(10)
 @docker_test
 def client_workload_1():
+    # see docker_autograde.py:client_workload_1
     pass
 
 
 @test(10)
 @docker_test
 def client_workload_2():
+    # see docker_autograde.py:client_workload_2
     pass
 
 
 @test(10)
 @docker_test
 def client_workload_3():
+    # see docker_autograde.py:client_workload_3
     pass
 
 
