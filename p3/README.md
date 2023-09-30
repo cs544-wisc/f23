@@ -23,6 +23,7 @@ Before starting, please review the [general project directions](../projects.md).
 -   Sept 30: Update Testing section
 -   Sept 30: Add additional `Predict` test case in `docker_autograde.py`
 -   Sept 30: Add comments in `autograde.py`
+-   Sept 30: Use -`Request` and -`Response` in `modelserver.proto`
 
 ## Part 1: Prediction Cache
 
@@ -84,11 +85,11 @@ Specify `syntax="proto3";` at the top of your file.
 `ModelServer` will contain 2 RPCs:
 
 1. `SetCoefs`
-    - Parameters: `coefs` (`repeated float`)
-    - Returns: `error` (`string`)
+    - `Request`: `coefs` (`repeated float`)
+    - `Response`: `error` (`string`)
 2. `Predict`
-    - Parameters: `X` (`repeated float`)
-    - Returns: `y` (`float`), `hit` (`bool`), and `error` (`string`)
+    - `Request`: `X` (`repeated float`)
+    - `Response: `y` (`float`), `hit` (`bool`), and `error` (`string`)
 
 You can build your `.proto` with:
 
