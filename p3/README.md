@@ -1,5 +1,3 @@
-# DRAFT! Don't start yet.
-
 # P3 (6% of grade): Key/Value Store Service
 
 ## Overview
@@ -50,7 +48,7 @@ Add code for an LRU cache to your `PredictionCache` class. Requirements:
 -   The cache should hold a maximum of 10 entries
 -   Whenever `SetCoefs` is called, _invalidate_ the cache (meaning clear out all the entries in the cache) because we won't expect the same predictions for the same inputs now that the model itself has changes
 -   The second value returned by `Predict` should indicate whether there was a hit
--   When adding an `X` value to a caching dictionary or looking it up, first convert X to a tuple, like this: `tuple(A.flatten().tolist())`. The reason is that PyTorch tensors don't work as you would expect as keys in a Python `dict` (but tuples do work)
+-   When adding an `X` value to a caching dictionary or looking it up, first convert X to a tuple, like this: `tuple(X.flatten().tolist())`. The reason is that PyTorch tensors don't work as you would expect as keys in a Python `dict` (but tuples do work)
 
 Use `test_predict_cache.py` and verify that it produces the expected output indicated by the comments.
 
@@ -133,7 +131,7 @@ python3 client.py <PORT> <COEF> <THREAD1-WORK.csv> <THREAD2-WORK.csv> ...
 
 For example, say you run `python3 client.py 5440 "1.0,2.0,3.0" x1.csv x2.csv x3.csv`.
 
-Your client should do the following, in order:
+For this example, your client should do the following, in order:
 
 1. connect to the server at port 5440
 2. call `SetCoef` with [1.0,2.0,3.0]
@@ -141,7 +139,7 @@ Your client should do the following, in order:
 4. each thread should loop over the rows in its CSV files. Each row will floats that should be used to make a `Predict` call to the server. The threads should collect stats about the numbers of hits/misses.
 5. the main thread should call `join` to wait until the 3 threads are finished
 
-The client can print other stuff, but its very last line of output should be the overall hitrate. For example, if the hit/miss counts for the three threads are 1/1, 0,1, and 3/8, then the overall hit rate would be (1+0+3) / (1+1+8) = 0.4.
+The client can print other stuff, but its very last line of output should be the overall hit rate. For example, if the hit/miss counts for the three threads are 1/1, 0/1, and 3/8, then the overall hit rate would be (1+0+3) / (1+1+8) = 0.4.
 
 ## Part 4: Deployment
 
@@ -150,7 +148,7 @@ You should write a `Dockerfile` to build an image with everything needed to run 
 -   Build via `docker build -t p3 .`
 -   Run via `docker run -p 127.0.0.1:54321:5440 p3` (i.e., you can map any external port to the internal port of 5440)
 
-You should then be able to run the client outside of the container (using port 54321), or use a `docker exec` to enter the container and run the client on port 5440.
+You should then be able to run the client outside of the container (using port 54321), or use a `docker exec` to enter the container and run the client with port 5440.
 
 ## Submission
 
