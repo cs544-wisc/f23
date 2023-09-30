@@ -20,7 +20,7 @@ Before starting, please review the [general project directions](../projects.md).
 ## Corrections/Clarifications
 
 -   Sept 30: Match up `test_predict_cache.py` and `test_modelserver.py` with specification
--
+-   Sept 30: Update Testing section
 
 ## Part 1: Prediction Cache
 
@@ -162,4 +162,36 @@ python3 autograder.py
 
 ## Tester
 
-Details coming soon...
+Run `python autograde.py` to get your score, which contains the following tests:
+
+1. `docker_build_run` (10)
+    - docker image builds and can start running
+2. `run_docker_autograde` (0)
+    - It starts the docker autograder (within the docker container)
+3. `protobuf_interface` (10)
+    - interface matches spec
+4. `set_coefs` (10)
+    - is correct, no errors
+5. `predict` (10)
+    - get expected result
+6. `predict_single_call_cache` (10)
+    - repeated call will hit cache
+7. `predict_full_cache_eviction` (10)
+    - repeated call will not hit cache after cache fills up
+8. `set_coefs_cache_invalidation` (10)
+    - cache is invalidated after SetCoefs
+9. `client_workload_1` (10)
+    - no repeats/cache_hits
+10. `client_workload_2` (10)
+    - LRU check
+11. `client_workload_3` (10)
+    - handles multiple CSVs
+
+There will also be a manual grading portion, so the score you see in `test.json` may not reflect your final score.
+
+We will check the following:
+
+-   Client uses threads
+-   Server uses threads
+-   Server locking is correct
+-   Etc.
