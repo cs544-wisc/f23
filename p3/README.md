@@ -19,7 +19,8 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
--   none yet
+-   Sept 30: Match up `test_predict_cache.py` and `test_modelserver.py` with specification
+-
 
 ## Part 1: Prediction Cache
 
