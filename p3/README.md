@@ -1,4 +1,4 @@
-# P3 (6% of grade): Key/Value Store Service
+# P3 (6% of grade): Model Server
 
 ## Overview
 
