@@ -24,6 +24,7 @@ Before starting, please review the [general project directions](../projects.md).
 -   Sept 30: Add additional `Predict` test case in `docker_autograde.py`
 -   Sept 30: Add comments in `autograde.py`
 -   Sept 30: Use -`Request` and -`Response` in `modelserver.proto`
+-   Oct 02: Reword hit/miss rate to hit and miss rate (your hit rate is the number of hits divided by the total number of calls)
 
 ## Part 1: Prediction Cache
 
@@ -137,13 +138,13 @@ For example, say you run `python3 client.py 5440 "1.0,2.0,3.0" x1.csv x2.csv x3.
 
 For this example, your client should do the following, in order:
 
-1. connect to the server at port 5440
-2. call `SetCoef` with [1.0,2.0,3.0]
-3. launch three threads, each responsible for one of the 3 CSV files
-4. each thread should loop over the rows in its CSV files. Each row will floats that should be used to make a `Predict` call to the server. The threads should collect stats about the numbers of hits/misses.
-5. the main thread should call `join` to wait until the 3 threads are finished
+1. Connect to the server at port `5440`.
+2. Call `SetCoef` with [1.0,2.0,3.0].
+3. Launch three threads, each responsible for one of the 3 CSV files.
+4. Each thread should loop over the rows in its CSV files. Each row will contain a list of floats that should be used to make a `Predict` call to the server. The threads should collect statistics about the numbers of hits and misses.
+5. The main thread should call `join` to wait until the 3 threads are finished.
 
-The client can print other stuff, but its very last line of output should be the overall hit rate. For example, if the hit/miss counts for the three threads are 1/1, 0/1, and 3/8, then the overall hit rate would be (1+0+3) / (1+1+8) = 0.4.
+The client can print other stuff, but its very last line of output should be the overall hit rate. For example, if the hit and total counts for the three threads are 1/1, 0/1, and 3/8, then the overall hit rate would be (1+0+3) / (1+1+8) = 0.4.
 
 ## Part 4: Deployment
 
