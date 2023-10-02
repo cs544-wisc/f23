@@ -19,7 +19,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
--   Sept 30: Match up `test_predict_cache.py` and `test_modelserver.py` with specification
+-   Sept 30: Match up `test_prediction_cache.py` and `test_modelserver.py` with specification
 -   Sept 30: Update Testing section
 -   Sept 30: Add additional `Predict` test case in `docker_autograde.py`
 -   Sept 30: Add comments in `autograde.py`
@@ -54,7 +54,7 @@ Add code for an LRU cache to your `PredictionCache` class. Requirements:
 -   The second value returned by `Predict` should indicate whether there was a hit
 -   When adding an `X` value to a caching dictionary or looking it up, first convert X to a tuple, like this: `tuple(X.flatten().tolist())`. The reason is that PyTorch tensors don't work as you would expect as keys in a Python `dict` (but tuples do work)
 
-Use `test_predict_cache.py` and verify that it produces the expected output indicated by the comments.
+Use `test_prediction_cache.py` and verify that it produces the expected output indicated by the comments.
 
 ### Locking
 
@@ -89,7 +89,7 @@ Specify `syntax="proto3";` at the top of your file.
     - `Response`: `error` (`string`)
 2. `Predict`
     - `Request`: `X` (`repeated float`)
-    - `Response: `y` (`float`), `hit` (`bool`), and `error` (`string`)
+    - `Response`: `y` (`float`), `hit` (`bool`), and `error` (`string`)
 
 You can build your `.proto` with:
 
