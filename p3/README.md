@@ -124,7 +124,7 @@ server.wait_for_termination()
 
 You can do this directly in the bottom of your server.py, or within a `main` function; feel free to move imports to the top of your file if you like.
 
-Use `test_modelserver.py` and verify that it produces the expected output indicated by the comments.
+Use `test_modelserver.py` after starting the server to verify that it produces the expected output indicated by the comments.
 
 ## Part 3: Client
 
@@ -161,7 +161,7 @@ You should organize and commit your files such that we can run the code in your 
 
 ```shell
 python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. modelserver.proto
-python3 autograder.py
+python3 autograde.py
 ```
 
 ## Tester
