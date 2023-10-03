@@ -25,6 +25,7 @@ Before starting, please review the [general project directions](../projects.md).
 -   Sept 30: Add comments in `autograde.py`
 -   Sept 30: Use -`Request` and -`Response` in `modelserver.proto`
 -   Oct 02: Reword hit/miss rate to hit and miss rate (your hit rate is the number of hits divided by the total number of calls)
+-   Oct 03: Added `--break-system-packages` to installation command
 
 ## Part 1: Prediction Cache
 
@@ -78,7 +79,7 @@ Read this guide for gRPC with Python:
 Install the tools (be sure to upgrade pip first, as described in the directions):
 
 ```shell
-pip3 install grpcio==1.58.0 grpcio-tools==1.58.0
+pip3 install grpcio==1.58.0 grpcio-tools==1.58.0 --break-system-packages
 ```
 
 Create a file called `modelserver.proto` containing a service called `ModelServer`.
