@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+// messages (protobuf)
+
+message MultReq {
+        int32 x = 1;
+        int32 y = 2;
+}
+
+message MultManyReq {
+        repeated int32 nums = 1;
+}
+
+message MultResp {
+        int32 result = 1;
+}
+
+// services (gRPC)
+
+service Calc {
+        rpc Mult(MultReq) returns (MultResp);
+        rpc MultMany(MultManyReq) returns (MultResp);
+}
