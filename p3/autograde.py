@@ -41,7 +41,7 @@ def docker_build_run():
             "p3_autograde",
         ]
     )
-    sleep(2)  # wait for server to start
+    sleep(5)  # wait for server to start
 
 
 @test(0)

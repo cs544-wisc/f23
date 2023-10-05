@@ -26,6 +26,7 @@ Before starting, please review the [general project directions](../projects.md).
 -   Sept 30: Use -`Request` and -`Response` in `modelserver.proto`
 -   Oct 02: Reword hit/miss rate to hit and miss rate (your hit rate is the number of hits divided by the total number of calls)
 -   Oct 03: Added `--break-system-packages` to installation command
+-   Oct 05: Increased time that autograder waits for server to bootup to 5 seconds
 
 ## Part 1: Prediction Cache
 
