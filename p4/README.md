@@ -4,15 +4,9 @@
 
 ## Overview
 
-HDFS can *partition* large files into blocks to share the storage
-across many workers, and it can *replicate* those blocks so that data
-is not lost even if some workers die.
+HDFS can *partition* large files into blocks to share the storage across many workers, and it can *replicate* those blocks so that data is not lost even if some workers die.
 
-In this project, you'll deploy a small HDFS cluster and upload a large
-file to it, with different replication settings.  You'll write Python
-code to read the file.  When data is partially lost (due to a node
-failing), your code will recover as much data as possible from the
-damaged file.
+In this project, you'll deploy a small HDFS cluster and upload a large file to it, with different replication settings.  You'll write Python code to read the file.  When data is partially lost (due to a node failing), your code will recover as much data as possible from the damaged file.
 
 Learning objectives:
 * use the HDFS command line client to upload files
@@ -24,29 +18,28 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* none yet
+* Changed link to 544
+* Added pip install requests
+* Clarifed where to build from and why that works.
+* Specified what to name their worker nodes
 
 ## Part 1: HDFS Deployment and Data Upload
 
-For this project, you'll create three containers, each from the same
-base image (`p3-base`).  Create a directory called `image` that
-contains a `Dockerfile` with the following:
+For this project, you'll create three containers, each from the same base image (`p3-base`).  Create a directory called `image` that contains a `Dockerfile` with the following:
 
 ```
 FROM ubuntu:22.04
 RUN apt-get update; apt-get install -y wget curl openjdk-11-jdk python3-pip net-tools lsof nano
-RUN pip3 install jupyterlab==3.4.5 MarkupSafe==2.0.1 pandas
-
+RUN pip3 install jupyterlab==3.4.5 MarkupSafe==2.0.1 pandas requests
 # HDFS
-RUN wget https://pages.cs.wisc.edu/~harter/cs639/hadoop-3.2.4.tar.gz; tar -xf hadoop-3.2.4.tar.gz; rm hadoop-3.2.4.tar.gz
+RUN wget https://pages.cs.wisc.edu/~harter/cs544/hadoop-3.2.4.tar.gz; tar -xf hadoop-3.2.4.tar.gz; rm hadoop-3.2.4.tar.gz
 
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV PATH="${PATH}:/hadoop-3.2.4/bin"
-
 CMD ["sh", "/start.sh"]
 ```
 
-Build it with `docker build -t p3-image ./image`.
+From outside of the image directory, build the docker image using `docker build -t p3-image ./image`. By passing `./image` you are specifying where the Dockerfile is.
 
 Now, create a `docker-compose.yml` that starts your three containers.  You can use the following as a starting point:
 
@@ -61,7 +54,8 @@ services:
         - "./main.sh:/start.sh"
 
     # worker:
-    # TODO: create 2 replicas running the worker
+    # TODO: create 2 replicas running the workers. 
+    # The first will be named worker1 and the second ... you guessed it worker2. 
 
 networks:
     default:
@@ -69,10 +63,7 @@ networks:
         driver: bridge
 ```
 
-Even though all three containers have the same image, they will do
-different things because `/start.sh` is the ENTRYPOINT, and you'll map
-in different scripts to run startup code (`main.sh` for the main
-service, and whatever you call it for the worker service).
+Even though all three containers have the same image, they will do different things because `/start.sh` is the ENTRYPOINT, and you'll map in different scripts to run startup code. For example, `main.sh` is mapped to `start.sh` for the main service.
 
 The `main` service should do three things:
 
@@ -82,16 +73,9 @@ The `main` service should do three things:
 
 The `worker` service should just start a datanode.
 
-**Note:** in this project, you will run your JupyterLab server inside
-  a container; you can use the web interface and SSH tunneling for
-  development.  We're using this approach because then your code can
-  run in the cs544net and easily communicate with the HDFS processes.
-  Even if you normally use VSCode, it will be difficult to do so for
-  this project (unless you can find a way to use it to connect to the
-  container -- the 544 team does not know a way).
+**Note:** in this project, you will run your JupyterLab server inside a container; you can use the web interface and SSH tunneling for development.  We're using this approach because then your code can run in the cs544net and easily communicate with the HDFS processes. Even if you normally use VSCode, it will be difficult to do so for this project (unless you can find a way to use it to connect to the container -- the 544 team does not know a way).
 
-Here are some example commands that you can use for inspiration when
-writing your .sh files (you'll probably need to modify them):
+Here are some example commands that you can use for inspiration when writing your .sh files (you'll probably need to modify them):
 
 * `hdfs namenode -format`
 * `hdfs namenode -D dfs.namenode.stale.datanode.interval=10000 -D dfs.namenode.heartbeat.recheck-interval=30000 -fs ????`
@@ -101,46 +85,40 @@ writing your .sh files (you'll probably need to modify them):
 Hints:
 
 * HDFS formatting sometimes prompts you if you want to overwrite the previous file system.  You can pass `-force` to make it do so without prompting (useful since this is scripted instead of done manually)
-* note how the namenode is configured with a couple `-D` options.  You should also have `dfs.webhdfs.enabled` be `true`
-* for the `-fs`, you can pass something like `hdfs://SERVER:PORT`.  Use port `9000` and `main` for the server name (matching the Docker service name).
-* we want to access Jupyter from outside the container, so when setting the port number, review our port forwarding options from the compose file
-* the namenode and Jupyter both run in the foreground by default, so whichever one that runs first will block the other from starting. You will need to send one of them to the background. 
+* Note how the namenode is configured with a couple `-D` options.  You should also have `dfs.webhdfs.enabled` be `true`
+* For the `-fs`, you can pass something like `hdfs://SERVER:PORT`.  Use port `9000` and `main` for the server name (matching the Docker service name).
+* All HDFS nodes should use the same port number
+* We want to access Jupyter from outside the container, so when setting the port number, review our port forwarding options from the compose file
+* The Juypter notebook server should be on a different port than the HDFS port
+* The namenode and Jupyter both run in the foreground by default, so whichever one that runs first will block the other from starting. You will need to send one of them to the background. 
 
 You can use `docker compose up` to start your mini cluster of three containers.  Some docker commands that might be helpful for debugging:
 
 * `docker compose ps -a` to see what containers are running or exited
 * `docker logs <CONTAINER NAME>` to see the output of a container
 * `docker exec -it <CONTAINER NAME> bash` to get shell inside the container
+* `docker stop $(docker ps -q)` to stop all running containers from any directory
+* `docker-compose down` to  remove all the containers, networks, and volumes associated with the services defined in your `docker-compose.yml`
 * `docker compose kill; docker compose rm -f` to get a fresh start
 
-The last command above stops and deletes all the containers in your
-cluster.  For simplicity, we recommend this rather than restarting a
-single container when you need to change something as it avoids some
-tricky issues with HDFS.  For example, if you just restart+reformat
-the container with the NameNode, the old DataNodes will not work with
-the new NameNode without a more complicated process/config.
 
-If all is well, you should be to connect to Jupyter inside the the
-main container and create a notebook called `p3.ipynb` where you'll do
-the rest of your work.  You can run `!CMD` inside a cell to run `CMD`
-as a shell command.  Use this approach to show both your shell and
-Python work for this project.
+The last command above stops and deletes all the containers in your cluster.  For simplicity, we recommend this rather than restarting a single container when you need to change something as it avoids some tricky issues with HDFS.  For example, if you just restart+reformat the container with the NameNode, the old DataNodes will not work with the new NameNode without a more complicated process/config.
 
-Note that each line under the `volumes` section in `docker-compose.yml` takes the form of `<path on host>:<path in container>`. This tells the container to directly map certain files / folders from the host machine to inside the container so that when you change its content from inside the container, the changes will show up in the path on the host machine. This is how you ensure that `p3.ipynb` does not get lost even if you removes the container running Jupyter. 
+If all is well, you should be to connect to Jupyter inside the the main container and open the `p3-part1.ipynb` notebook. You will use this notebook for the majority of your work.  You can run the first few cells (1.1, 1.2) to see if your output matches what is expected. When you place a `!` in front of a command in a Juypter shell, it is run as a bash commmand! This is the approach the first few cells use to check that both your shell and Python work for this project. 
+
+Note that each line under the `volumes` section in `docker-compose.yml` takes the form of `<path on host>:<path in container>`. This tells the container to directly map certain files / folders from the host machine to inside the container so that when you change its content from inside the container, the changes will show up in the path on the host machine. This is how you ensure that `p3-part1.ipynb` and `p3-part2.ipynb` do not get lost even if you remove the container running Jupyter. 
 
 Use a shell command in your notebook to download
-https://pages.cs.wisc.edu/~harter/cs639/data/hdma-wi-2021.csv.  Next,
-use two `hdfs dfs -cp` commands to upload this same file to HDFS
-twice, to the following locations:
+https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.csv. Check that it was properly downloaded using `!ls -l` (1.3).
+
+Next, use two `hdfs dfs -cp` commands to upload this same file to HDFS twice, to the following locations:
 
 * `hdfs://main:9000/single.csv`
 * `hdfs://main:9000/double.csv`
 
-In both cases, use a 1MB block size (`dfs.block.size`), and
-replication (`dfs.replication`) of 1 and 2 for `single.csv` and
-`double.csv`, respectively.
+In both cases, use a 1MB block size (`dfs.block.size`), and replication (`dfs.replication`) of 1 and 2 for `single.csv` and `double.csv`, respectively.
 
-Double check the sizes of the two files with the following commands:
+Double check the sizes of the two files by running cell 1.4 with the following command:
 
 ```
 hdfs dfs -du -h hdfs://main:9000/
@@ -153,16 +131,13 @@ You should see something like this:
 166.8 M  166.8 M  hdfs://main:9000/single.csv
 ```
 
-The first columns show the logical and physical sizes.  The two CSVs
-contain the same data, so the have the same logical sizes.  Note the
-difference in physical size due to replication, though.
+The first columns show the logical and physical sizes.  The two CSVs contain the same data, so the have the same logical sizes.  Note the difference in physical size due to replication, though.
 
+
+After confirming yor replication settings, run cell 1.5 to check your blocksizes. The block sizes are returned in bytes and should be equal to 1MB.  
 ## Part 2: Block Locations
 
-If you correctly configured the block size, single.csv should have 167
-blocks, some of which will be stored on each of your two Datanodes.
-Your job is to write some Python code to count how many blocks are
-stored on each worker by using the webhdfs interface.
+If you correctly configured the block size, single.csv should have 167 blocks, some of which will be stored on each of your two Datanodes. Your job is to write some Python code to count how many blocks are stored on each worker by using the webhdfs interface.
 
 Read about the `OPEN` call here:
 https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#OPEN.
@@ -173,31 +148,24 @@ Adapt the curl examples to use `requests.get` in Python instead.  Your URLs will
 http://main:9870/webhdfs/v1/single.csv?op=OPEN&offset=????
 ```
 
-Note that `main:9870` is the Namenode, which will reply with a
-redirection response that sends you to a Datanode for the actual data.
+Note that `main:9870` is the Namenode, which will reply with a redirection response that sends you to a Datanode for the actual data.
 
 If you pass `allow_redirects=False` to `requests.get` and look at the
-`.headers` of the Namenode's repsonse, you will be able to infer which
-Datanode stores that data corresponding to a specific offset in the
-file.  Loop over offsets corresponding to the start of each block
-(your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
+`.headers` of the Namenode's repsonse, you will be able to infer which Datanode stores that data corresponding to a specific offset in the
+file.  Loop over offsets corresponding to the start of each block (your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
 
-Construct and print a dictionary like the following that shows how
-many blocks of `single.csv` are on each Datanode:
+Construct a dictionary named `per_worker_block_count_single_csv` (or use the trick in the comments) like the following that shows how many blocks of `single.csv` are on each Datanode:
 
 ```
 {'http://70d2c4b6ccee:9864/webhdfs/v1/single.csv': 92,
  'http://890e8d910f92:9864/webhdfs/v1/single.csv': 75}
 ```
 
-Your data will probably be distributed differently between the two,
-and you will almost certainly have container names that are different
-than `70d2c4b6ccee` and `890e8d910f92`.
+Your data will probably be distributed differently between the two, and you will almost certainly have container names that are different than `70d2c4b6ccee` and `890e8d910f92`. Run cell 2.1 to check your answer. 
 
 ## Part 3: Reading the Data
 
-In this part, you'll make a new reader class that makes it easy to
-loop over the lines in an HDFS file.
+In this part, you'll make a new reader class that makes it easy to loop over the lines in an HDFS file.
 
 You'll do this by inheriting from the `io.RawIOBase` class: https://docs.python.org/3/library/io.html#class-hierarchy.  Here is some starter code:
 
