@@ -71,10 +71,6 @@ def list_tests():
 
 # run all tests
 def run_tests():
-    # make a copy of the code
-    shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True)
-    os.chdir(TMP_DIR)
-
     results = {
         "score": 0,
         "full_score": 0,
@@ -144,6 +140,10 @@ def tester_main():
         print("invalid path")
         return
     TEST_DIR = os.path.abspath(test_dir)
+
+    # make a copy of the code
+    shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True)
+    os.chdir(TMP_DIR)
 
     # run init
     if INIT:
