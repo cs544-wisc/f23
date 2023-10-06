@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message Req{}
+message Resp{
+        int32 total = 1;
+}
+
+service Counter {
+        rpc Count(Req) returns (Resp);
+}
