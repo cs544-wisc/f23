@@ -104,7 +104,9 @@ You can use `docker compose up` to start your mini cluster of three containers. 
 
 The last command above stops and deletes all the containers in your cluster.  For simplicity, we recommend this rather than restarting a single container when you need to change something as it avoids some tricky issues with HDFS.  For example, if you just restart+reformat the container with the NameNode, the old DataNodes will not work with the new NameNode without a more complicated process/config.
 
-If all is well, you should be to connect to Jupyter inside the the main container and open the `p3-part1.ipynb` notebook. You will use this notebook for the majority of your work.  You can run the first few cells (1.1, 1.2) to see if your output matches what is expected. When you place a `!` in front of a command in a Juypter cell, it is run as a bash commmand! This is the approach the first few cells use to check that both your shell and Python work for this project. 
+If all is well, you should be to connect to Jupyter inside the the main container and open the `p3-part1.ipynb` notebook. You will use this notebook for the majority of your work. 
+
+**Note**: Cells containing headers (e.g. 1.1, 4.1, etc.) are there for you to check your work. Please do not edit these cells or this will lead to the autograder misbehaving. You can run the first few cells (1.1, 1.2) to see if your output matches what is expected. When you place a `!` in front of a command in a Juypter cell, it is run as a bash commmand! This is the approach the first few cells use to check that both your shell and Python work for this project. 
 
 Note that each line under the `volumes` section in `docker-compose.yml` takes the form of `<path on host>:<path in container>`. This tells the container to directly map certain files / folders from the host machine to inside the container so that when you change its content from inside the container, the changes will show up in the path on the host machine. This is how you ensure that `p3-part1.ipynb` and `p3-part2.ipynb` do not get lost even if you remove the container running Jupyter. 
 
@@ -154,14 +156,14 @@ If you pass `allow_redirects=False` to `requests.get` and look at the
 `.headers` of the Namenode's repsonse, you will be able to infer which Datanode stores that data corresponding to a specific offset in the
 file.  Loop over offsets corresponding to the start of each block (your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
 
-Construct a dictionary named `per_worker_block_count_single_csv` (or use the trick in the comments) like the following that shows how many blocks of `single.csv` are on each Datanode:
+Construct a dictionary named `per_worker_block_count_single_csv` (or use the trick in the comments). Your dictionary keys should be the web addresses / ports  of each datanote. Your result should look like the following that shows how many blocks of `single.csv` are on each Datanode:
 
 ```
 {'http://70d2c4b6ccee:9864/webhdfs/v1/single.csv': 92,
  'http://890e8d910f92:9864/webhdfs/v1/single.csv': 75}
 ```
 
-Your data will probably be distributed differently between the two, and you will almost certainly have container names that are different than `70d2c4b6ccee` and `890e8d910f92`. Run cell 2.1 to check your answer. 
+Your data will probably be distributed differently between the two, and you will almost certainly have container names that are different than `70d2c4b6ccee` and `890e8d910f92`. Run cell 2.1 and add up your blocks to sanity check your answer. 
 
 ## Part 3: Reading the Data
 
