@@ -142,7 +142,8 @@ def tester_main():
     TEST_DIR = os.path.abspath(test_dir)
 
     # make a copy of the code
-    shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True)
+    ignore = lambda _dir_name, _dir_content: [".git", ".github", "__pycache__", ".gitignore"]
+    shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True, ignore=ignore)
     os.chdir(TMP_DIR)
 
     # run init
