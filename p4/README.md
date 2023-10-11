@@ -4,6 +4,9 @@
 
 ## Overview
 
+
+**Note: Remember to switch your google instance to an E2 Medium for this project**
+
 HDFS can *partition* large files into blocks to share the storage across many workers, and it can *replicate* those blocks so that data is not lost even if some workers die.
 
 In this project, you'll deploy a small HDFS cluster and upload a large file to it, with different replication settings.  You'll write Python code to read the file.  When data is partially lost (due to a node failing), your code will recover as much data as possible from the damaged file.
@@ -18,10 +21,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* Changed link to 544
-* Added pip install requests
-* Clarifed where to build from and why that works.
-* Specified what to name their worker nodes
+* None yet
 
 ## Part 1: HDFS Deployment and Data Upload
 
@@ -104,9 +104,9 @@ You can use `docker compose up` to start your mini cluster of three containers. 
 
 The last command above stops and deletes all the containers in your cluster.  For simplicity, we recommend this rather than restarting a single container when you need to change something as it avoids some tricky issues with HDFS.  For example, if you just restart+reformat the container with the NameNode, the old DataNodes will not work with the new NameNode without a more complicated process/config.
 
-If all is well, you should be to connect to Jupyter inside the the main container and open the `p3-part1.ipynb` notebook. You will use this notebook for the majority of your work. 
+If all is well, you should be to connect to Jupyter inside the the main container and open the `p3-part1.ipynb` notebook. You will use this notebook for the first part of the project. 
 
-**Note**: Cells containing headers (e.g. 1.1, 4.1, etc.) are there for you to check your work. Please do not edit these cells or this will lead to the autograder misbehaving. You can run the first few cells (1.1, 1.2) to see if your output matches what is expected. When you place a `!` in front of a command in a Juypter cell, it is run as a bash commmand! This is the approach the first few cells use to check that both your shell and Python work for this project. 
+**Note**: Cells containing headers (e.g. 1.1, 4.1, etc.) are there for you to check your work. **Please do not edit these cells or this will lead to the autograder misbehaving**. You can run the first few cells (1.1, 1.2) to see if your output matches what is expected. When you place a `!` in front of a command in a Juypter cell, it is run as a bash command! This is the approach the first few cells use to check that both your shell and Python work for this project. 
 
 Note that each line under the `volumes` section in `docker-compose.yml` takes the form of `<path on host>:<path in container>`. This tells the container to directly map certain files / folders from the host machine to inside the container so that when you change its content from inside the container, the changes will show up in the path on the host machine. This is how you ensure that `p3-part1.ipynb` and `p3-part2.ipynb` do not get lost even if you remove the container running Jupyter. 
 
@@ -120,7 +120,7 @@ Next, use two `hdfs dfs -cp` commands to upload this same file to HDFS twice, to
 
 In both cases, use a 1MB block size (`dfs.block.size`), and replication (`dfs.replication`) of 1 and 2 for `single.csv` and `double.csv`, respectively.
 
-Double check the sizes of the two files by running cell 1.4 with the following command:
+Double check the sizes of the two files by running cell 1.4 which contains the following command
 
 ```
 hdfs dfs -du -h hdfs://main:9000/
@@ -136,7 +136,7 @@ You should see something like this:
 The first columns show the logical and physical sizes.  The two CSVs contain the same data, so the have the same logical sizes.  Note the difference in physical size due to replication, though.
 
 
-After confirming yor replication settings, run cell 1.5 to check your blocksizes. The block sizes are returned in bytes and should be equal to 1MB.  
+After confirming your replication settings, run cell 1.5 to check your blocksizes. The block sizes are returned in bytes and should be equal to 1MB.  
 ## Part 2: Block Locations
 
 If you correctly configured the block size, single.csv should have 167 blocks, some of which will be stored on each of your two Datanodes. Your job is to write some Python code to count how many blocks are stored on each worker by using the webhdfs interface.
@@ -153,10 +153,9 @@ http://main:9870/webhdfs/v1/single.csv?op=OPEN&offset=????
 Note that `main:9870` is the Namenode, which will reply with a redirection response that sends you to a Datanode for the actual data.
 
 If you pass `allow_redirects=False` to `requests.get` and look at the
-`.headers` of the Namenode's repsonse, you will be able to infer which Datanode stores that data corresponding to a specific offset in the
-file.  Loop over offsets corresponding to the start of each block (your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
+`.headers` of the Namenode's repsonse, you will be able to infer which Datanode stores that data corresponding to a specific offset in the file.  Loop over offsets corresponding to the start of each block (your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
 
-Construct a dictionary named `per_worker_block_count_single_csv` (or use the trick in the comments). Your dictionary keys should be the web addresses / ports  of each datanote. Your result should look like the following that shows how many blocks of `single.csv` are on each Datanode:
+Construct a dictionary named `per_worker_block_count_single_csv` (or use the trick in the comments). Your dictionary keys should be the web addresses / ports  of each datanote as shown below. Your result should look like the following that shows how many blocks of `single.csv` are on each Datanode:
 
 ```
 {'http://70d2c4b6ccee:9864/webhdfs/v1/single.csv': 92,
@@ -195,18 +194,19 @@ for line in io.BufferedReader(hdfsFile("single.csv")):
     print(line)
 ```
 
+
 Implementation:
 
 * use `GETFILESTATUS` (https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#GETFILESTATUS) to correctly set `self.length` in the constructor
 * whenever `readinto` is called, read some data at position `self.offset` from the HDFS file: https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#OPEN
-* the data you read should be put into `b`.  The type of `b` will generally be a `memoryview` which is like a fixed-size list of bytes.  You can use slices to put values here (something like `b[0:3] = b'abc'`).  Since it is fixed size, you should use `len(b)` to determine how much data to request from HDFS.
+* the data you read should be put into `b`.   The type of `b` will generally be a `memoryview` which is like a fixed-size list of bytes.  You can use slices to put values here (something like `b[0:3] = b'abc'`).  When you place values in b, place them at the beginning of `b` like so `b[:len(values)] = values`. Since `b` is fixed size, you should use `len(b)` to determine how much data to request from HDFS.
 * `readinto` should return the number of bytes written into `b` -- this will usually be the `len(b)`, but not always (for example, when you get to the end of the HDFS file), so base it on how much data you get from webhdfs.
 * before returning from `readinto`, increase `self.offset` so that the next read picks up where the previous one left off
 * if `self.offset >= self.length`, you know you're at the end of the file, so `readinto` should return 0 without calling to webhdfs
 
 Use your class to loop over every line of single.csv.
 
-Count how many lines contain the text "Single Family" and how many contain "Multifamily".  Print out your counts like the following:
+Count how many lines contain the text "Single Family" and how many contain "Multifamily". Your counts should look similar to the following example:
 
 ```
 Counts from single.csv
@@ -215,25 +215,23 @@ Multi Family: 2493
 Seconds: 24.33926248550415
 ```
 
-Note that by default `io.BufferedReader` uses 8KB for buffering, which
-creates many small reads to HDFS, so your code will be unreasonably
-slow.  Experiment with passing `buffer_size=????` to use a larger
-buffer.
+We provide you with template code and variables that you will need to use. After you implement your code, make sure you check your answers using cells 3.1 - 3.7. 
 
-Your code should show at least two different sizes you tried (and the
-resulting times).
+
+Note that by default `io.BufferedReader` uses 8KB for buffering, which creates many small reads to HDFS, so your code will be unreasonably slow.  Experiment with setting `bs1` and `bs2` to different values and notice how the different buffer sizes change the amount of processing time. 
+
+Your code should show at least two different sizes you tried (and the resulting times).
 
 ## Part 4: Disaster Strikes
 
-You have two datanodes.  What do you think will happen to `single.csv`
-and `double.csv` if one of these nodes dies?
+Switch to `p3-part2.ipynb`. The rest of your project development will occur there. 
 
-Find out by manually running a `docker kill <CONTAINER NAME>` command
-on your VM to abruptly stop one of the Datanodes.
 
-Wait until the Namenode realizes the Datanode has died before proceeding.  Run `!hdfs dfsadmin -fs hdfs://main:9000/ -report`
-in your notebook to see when this happens.  Before proceeding, the report should show one dead Datanode, something
-like the following:
+You have two datanodes.  What do you think will happen to `single.csv` and `double.csv` if one of these nodes dies?
+
+Find out by manually running a `docker kill <CONTAINER NAME>` command on your VM to abruptly stop one of the Datanodes.
+
+Wait until the Namenode realizes the Datanode has died before proceeding.  Run `!hdfs dfsadmin -fs hdfs://main:9000/ -report` (cell 4.1) in your notebook to see when this happens.  Before proceeding, the report should show one dead Datanode, something like the following:
 
 <details>
 <summary>Expand</summary>
@@ -301,15 +299,12 @@ Num of Blocks: 259
 </pre>
 </details>
 
+<br>
 Note that HDFS datanodes use heartbeats to inform the namenode of its liveness. That is, the datanodes send a small dummy message (heartbeat) periodically (every 3 seconds by default) to inform the namenode of its presence. Recall that when we start the namenode, we specify `dfs.namenode.stale.datanode.interval=10000` and `dfs.namenode.heartbeat.recheck-interval=30000`. The first says that the namenode considers the datanode stale if it does not receive its heartbeat for 10 seconds (10000 ms) and the second says that it will consider the datanode dead after another 30 seconds. Hence, if you configure your cluster correctly, the namenode will become aware of the loss of datanode within 40 seconds after you killed the datanode. 
 
-Run your code from part 3 again that counts the multi and single
-family dwellings in new cells.  Do so on both double.csv and
-single.csv.
+Run your code from part 3 again that counts the multi and single family dwellings in new cells.  Do so on both double.csv and single.csv. We again provide template code and variables for you to insert your implementation in. 
 
-double.csv should work just like before.  You will have lost some
-blocks from single.csv, but modify `readinto` in your `hdfsFile` class
-so that it still returns as much data as possible.  If reading a block
+double.csv should work just like before.  You will have lost some blocks from single.csv, but modify `readinto` in your `hdfsFile` class so that it still returns as much data as possible.  If reading a block
 from webhdfs fails, `readinto` should do the following:
 
 1. put `\n` into the `b` buffer
@@ -332,9 +327,7 @@ Single: 200608
 Multi: 929
 ```
 
-Observe that we're still getting some lines from single.csv, but only
-about half as many as before the data loss (exact counts will depend
-on how many blocks each datanode was storing).
+Observe that we're still getting some lines from single.csv, but only about half as many as before the data loss (exact counts will depend on how many blocks each datanode was storing).
 
 ## Submission
 
@@ -350,9 +343,7 @@ notebook, and run it.
 
 ## Approximate Rubric:
 
-The following is approximately how we will grade, but we may make
-changes if we overlooked an important part of the specification or did
-not consider a common mistake.
+The following is approximately how we will grade, but we may make changes if we overlooked an important part of the specification or did not consider a common mistake.
 
 1. [x/1] a `Dockerfile` and `docker-compose.yml` can be used to deploy the cluster (part 1)
 2. [x/1] `dfs` cp and du commands create (and show) single.csv and double.csv with the correct block size and replication settings (part 1)

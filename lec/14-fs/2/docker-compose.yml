@@ -1,0 +1,7 @@
+services:
+        counter_service:
+                image: counter
+                ports:
+                        - 127.0.0.1:5000-5002:5440
+                deploy:
+                        replicas: 3
