@@ -172,7 +172,10 @@ Write a training loop to improve the coefficients.  Requirements:
 You should commit your work in a notebook named `p2.ipynb`.
 
 ## Tester
-After copying `../tester.py`, `../nbutils.py`, and `autograde.py` to your repository (where your `nb/` directory is located), you can check your notebook answers with this command:
+
+After copying `../tester.py`, `../nbutils.py`, and `autograde.py` to
+your repository (where your `nb/` directory is located), you can check
+your notebook answers with this command:
 
 ```sh
 python3 autograde.py
