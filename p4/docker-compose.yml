@@ -1,0 +1,16 @@
+services:
+    nb:
+        image: p4-nb
+        ports:
+        - "127.0.0.1:5000:5000"
+        volumes:
+        - "./nb:/nb"
+
+    nn:
+        image: p4-nn
+        hostname: boss
+
+    dn:
+        image: p4-dn
+        deploy:
+                replicas: 2
