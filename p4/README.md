@@ -57,7 +57,7 @@ docker build . -f datanode.Dockerfile -t p4-dn
 ```
 
 Requirements:
-* like p4-nb, both these should use p4-hdfs as a base
+* like `p4-nb`, both these should use `p4-hdfs` as a base
 * `namenode.Dockerfile` should run two commands, `hdfs namenode -format` and `hdfs namenode -D dfs.namenode.stale.datanode.interval=10000 -D dfs.namenode.heartbeat.recheck-interval=30000 -fs hdfs://boss:9000`
 * `datanode.Dockerfile` should just run `hdfs datanode -D dfs.datanode.data.dir=/var/datanode -fs hdfs://boss:9000`
 
@@ -69,6 +69,24 @@ to change something as it avoids some tricky issues with HDFS.  For
 example, if you just restart+reformat the container with the NameNode,
 the old DataNodes will not work with the new NameNode without a more
 complicated process/config.
+
+#### Q1: how many live DataNodes are in the cluster?
+
+Write a cell like this:
+
+```
+#q1
+! SHELL COMMAND TO CHECK
+```
+
+The shell command should generate a report by passing some arguments
+to `hdfs dfsadmin`.  The output should contain a line like this:
+
+```
+...
+Live datanodes (2):
+...
+```
 
 #### Data Upload
 
@@ -89,24 +107,6 @@ twice, to the following locations:
 In both cases, use a 1MB block size (`dfs.block.size`), and
 replication (`dfs.replication`) of 1 and 2 for `single.csv` and
 `double.csv`, respectively.
-
-#### Q1: how many live DataNodes are in the cluster?
-
-Write a cell like this:
-
-```
-#q1
-SHELL COMMAND TO CHECK
-```
-
-The shell command should generate a report by passing some arguments
-to `hdfs dfsadmin`.  The output should contain a line like this:
-
-```
-...
-Live datanodes (2):
-...
-```
 
 #### Q2: what are the logical and physical sizes of the CSV files?
 
@@ -136,10 +136,10 @@ https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#OPEN.
 Adapt the curl examples to use `requests.get` in Python instead.  Your URLs will be like this:
 
 ```
-http://main:9870/webhdfs/v1/single.csv?op=OPEN&offset=????
+http://boss:9870/webhdfs/v1/single.csv?op=OPEN&offset=????
 ```
 
-Note that `main:9870` is the Namenode, which will reply with a redirection response that sends you to a Datanode for the actual data.
+Note that `boss:9870` is the NameNode, which will reply with a redirection response that sends you to a Datanode for the actual data.
 
 If you pass `allow_redirects=False` to `requests.get` and look at the
 `.headers` of the Namenode's repsonse, you will be able to infer which Datanode stores that data corresponding to a specific offset in the file.  Loop over offsets corresponding to the start of each block (your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
