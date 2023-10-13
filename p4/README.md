@@ -123,35 +123,71 @@ The first columns show the logical and physical sizes.  The two CSVs
 contain the same data, so the have the same logical sizes.  Note the
 difference in physical size due to replication, though.
 
-## Part 2: Block Locations
+## Part 2: WebHDFS
 
-If you correctly configured the block size, single.csv should have 167
-blocks, some of which will be stored on each of your two
-Datanodes. Your job is to write some Python code to count how many
-blocks are stored on each worker by using the webhdfs interface.
+The documents here describe how we can interact with HDFS via web
+requests:
+https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-hdfs/WebHDFS.html.
+Many examples show these web requests being made with the `curl`
+command, but you'll adapt those examples to use `requests.get`
+(https://requests.readthedocs.io/en/latest/user/quickstart/).
 
-Read about the `OPEN` call here:
-https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#OPEN.
+By default, WebHDFS runs on port 9870 (so use that instead of 9000 for
+this part).
 
-Adapt the curl examples to use `requests.get` in Python instead.  Your URLs will be like this:
+#### Q3: what is the file status for single.csv?
+
+Use the `GETFILESTATUS` operation to find out, and answer with a
+dictionary (the request returns JSON).
+
+Note that if `r` is a response object, then `r.content` will contain
+some bytes, which you could convert to a dictionary; alternatively,
+`r.json()` does this for you.
+
+The result should look something like this:
 
 ```
-http://boss:9870/webhdfs/v1/single.csv?op=OPEN&offset=????
+{'FileStatus': {...
+  'blockSize': 1048576,
+  ...
+  'length': 174944099,
+  ...
+  'replication': 1,
+  'storagePolicy': 0,
+  'type': 'FILE'}}
 ```
 
-Note that `boss:9870` is the NameNode, which will reply with a redirection response that sends you to a Datanode for the actual data.
+The `blockSize` and `length` fields might be helpful for future
+questions.
 
-If you pass `allow_redirects=False` to `requests.get` and look at the
-`.headers` of the Namenode's repsonse, you will be able to infer which Datanode stores that data corresponding to a specific offset in the file.  Loop over offsets corresponding to the start of each block (your blocksize is 1MB, so the offsets will be 0, 1MB, 2MB, etc).
+#### Q4: what is the location for the first block of single.csv?
 
-Construct a dictionary named `per_worker_block_count_single_csv` (or use the trick in the comments). Your dictionary keys should be the web addresses / ports  of each datanote as shown below. Your result should look like the following that shows how many blocks of `single.csv` are on each Datanode:
+Use the `OPEN` operation with `offset` 0 and `noredirect=true`
+(`length` and `buffersize` are optional).
 
+You should get a string similar to this:
+
+```python
+'http://6a2464e4ba5c:9864/webhdfs/v1/single.csv?op=OPEN&namenoderpcaddress=boss:9000&offset=0'
 ```
-{'http://70d2c4b6ccee:9864/webhdfs/v1/single.csv': 92,
- 'http://890e8d910f92:9864/webhdfs/v1/single.csv': 75}
+
+Note that `6a2464e4ba5c` was the randomly generated container ID for
+the container running the DataNode, so yours will be different.
+
+#### Q5: how are the blocks of single.csv distributed across the two DataNode containers?
+
+This is similar to above, except you should check every block, and
+extract the container ID from the URL.
+
+You should produce a Python dictionary like this (your IDs and counts will be different, of course):
+
+```python
+{'6a2464e4ba5c': 88, '805fe2ba2d15': 79}
 ```
 
-Your data will probably be distributed differently between the two, and you will almost certainly have container names that are different than `70d2c4b6ccee` and `890e8d910f92`. Run cell 2.1 and add up your blocks to sanity check your answer. 
+If all the blocks are on the same DataNode, it is likely you uploaded
+the CSV before both DataNodes got a chance to connect with the
+NameNode.  Consider re-running, and giving the cluster more time.
 
 ## Part 3: Reading the Data
 
