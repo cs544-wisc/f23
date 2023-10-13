@@ -20,9 +20,9 @@ services:
 
     dn:
         image: p4-dn
-        hostname: worker
         deploy:
                 replicas: 2
                 resources:
                         limits:
                                 memory: 1g
+
