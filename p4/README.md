@@ -4,8 +4,6 @@
 
 ## Overview
 
-**Remember to switch to an E2 Medium for this project:** [VM schedule](../projects.md#compute-setup).
-
 HDFS can *partition* large files into blocks to share the storage
 across many workers, and it can *replicate* those blocks so that data
 is not lost even if some workers die.
@@ -16,10 +14,12 @@ code to read the file.  When data is partially lost (due to a node
 failing), your code will recover as much data as possible from the
 damaged file.
 
+**Remember to switch to an e2-medium for this project:** [VM schedule](../projects.md#compute-setup).
+
 Learning objectives:
 * use the HDFS command line client to upload files
 * use the webhdfs API (https://hadoop.apache.org/docs/r1.0.4/webhdfs.html) to read files
-* measure the impact buffering has on read performance
+* use PyArrow to read HDFS files
 * relate replication count to space efficiency and fault tolerance
 
 Before starting, please review the [general project directions](../projects.md).
@@ -28,14 +28,12 @@ Before starting, please review the [general project directions](../projects.md).
 
 * None yet
 
-## Part 1: HDFS Deployment and Data Upload
+## Part 1: Deployment and Data Upload
 
 #### Cluster
 
 For this project, you'll deploy a small cluster of containers, one
 with Jupyter, one with an HDFS NameNode, and two with HDFS DataNodes.
-
-TODO: memory limits in compose file...
 
 We have given you `docker-compose.yml` for starting the cluster, but
 you need to build some images first.  Start with the following:
@@ -80,7 +78,9 @@ Write a cell like this:
 ```
 
 The shell command should generate a report by passing some arguments
-to `hdfs dfsadmin`.  The output should contain a line like this:
+to `hdfs dfsadmin`.  The output should contain a line like this (you
+might need to wait and re-run this command a bit to give the DataNodes
+time to show up):
 
 ```
 ...
@@ -107,6 +107,15 @@ twice, to the following locations:
 In both cases, use a 1MB block size (`dfs.block.size`), and
 replication (`dfs.replication`) of 1 and 2 for `single.csv` and
 `double.csv`, respectively.
+
+If you want to re-run your notebook from the top and have the files
+re-created, consider having a cell with the following, prior to the
+`cp` commands.
+
+```
+!hdfs dfs -rm -f hdfs://boss:9000/single.csv
+!hdfs dfs -rm -f hdfs://boss:9000/double.csv
+```
 
 #### Q2: what are the logical and physical sizes of the CSV files?
 
@@ -165,7 +174,7 @@ questions.
 Use the `OPEN` operation with `offset` 0 and `noredirect=true`
 (`length` and `buffersize` are optional).
 
-You should get a string similar to this:
+You answer should a string, similar to this:
 
 ```python
 'http://6a2464e4ba5c:9864/webhdfs/v1/single.csv?op=OPEN&namenoderpcaddress=boss:9000&offset=0'
@@ -176,7 +185,7 @@ the container running the DataNode, so yours will be different.
 
 #### Q5: how are the blocks of single.csv distributed across the two DataNode containers?
 
-This is similar to above, except you should check every block, and
+This is similar to above, except you should check every block and
 extract the container ID from the URL.
 
 You should produce a Python dictionary like this (your IDs and counts will be different, of course):
@@ -187,184 +196,100 @@ You should produce a Python dictionary like this (your IDs and counts will be di
 
 If all the blocks are on the same DataNode, it is likely you uploaded
 the CSV before both DataNodes got a chance to connect with the
-NameNode.  Consider re-running, and giving the cluster more time.
+NameNode.  Re-run, this time giving the cluster more time to come up.
 
-## Part 3: Reading the Data
+## Part 3: PyArrow
 
-In this part, you'll make a new reader class that makes it easy to loop over the lines in an HDFS file.
+#### Q6: what are the first 10 bytes of single.csv?
 
-You'll do this by inheriting from the `io.RawIOBase` class: https://docs.python.org/3/library/io.html#class-hierarchy.  Here is some starter code:
-
-```python
-import io
-
-class hdfsFile(io.RawIOBase):
-    def __init__(self, path):
-        self.path = path
-        self.offset = 0
-        self.length = 0 # TODO
-
-    def readable(self):
-        return True
-
-    def readinto(self, b):
-        return 0 # TODO
-```
-
-In the end, somebody should be able to loop over the lines in an HDFS file like this:
+Use PyArrow to read the HFDS file.  You can connect to HDFS like this (the missing values are host and port, respectively):
 
 ```python
-for line in io.BufferedReader(hdfsFile("single.csv")):
-    line = str(line, "utf-8")
-    print(line)
+import pyarrow as pa
+import pyarrow.fs
+hdfs = pa.fs.HadoopFileSystem(????, ????)
 ```
 
+You can then use `hdfs.open_input_file(????)` with a path to open the
+file and return a `pyarrow.lib.NativeFile` object.
 
-Implementation:
+You can use the `read_at` call on a `NativeFile` to get a specified
+number of bytes at a specified offset.
 
-* use `GETFILESTATUS` (https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#GETFILESTATUS) to correctly set `self.length` in the constructor
-* whenever `readinto` is called, read some data at position `self.offset` from the HDFS file: https://hadoop.apache.org/docs/r1.0.4/webhdfs.html#OPEN
-* the data you read should be put into `b`.   The type of `b` will generally be a `memoryview` which is like a fixed-size list of bytes.  You can use slices to put values here (something like `b[0:3] = b'abc'`).  When you place values in b, place them at the beginning of `b` like so `b[:len(values)] = values`. Since `b` is fixed size, you should use `len(b)` to determine how much data to request from HDFS.
-* `readinto` should return the number of bytes written into `b` -- this will usually be the `len(b)`, but not always (for example, when you get to the end of the HDFS file), so base it on how much data you get from webhdfs.
-* before returning from `readinto`, increase `self.offset` so that the next read picks up where the previous one left off
-* if `self.offset >= self.length`, you know you're at the end of the file, so `readinto` should return 0 without calling to webhdfs
+#### Q7: how many lines of single.csv contain the string "Single Family"?
 
-Use your class to loop over every line of single.csv.
+PyArrow's `NativeFile` implements the `RawIOBase` interface (even
+though it is not a subclass):
+https://docs.python.org/3/library/io.html#io.RawIOBase.
 
-Count how many lines contain the text "Single Family" and how many contain "Multifamily". Your counts should look similar to the following example:
+This means `NativeFile` can read bytes at some location into a buffer,
+but it doesn't do other nice things for you like letting you loop over
+lines or converting bytes to text.  The `io` module has some wrappers
+you could optionally use to get this functionality, such as:
 
-```
-Counts from single.csv
-Single Family: 444874
-Multi Family: 2493
-Seconds: 24.33926248550415
-```
-
-We provide you with template code and variables that you will need to use. After you implement your code, make sure you check your answers using cells 3.1 - 3.7. 
-
-
-Note that by default `io.BufferedReader` uses 8KB for buffering, which creates many small reads to HDFS, so your code will be unreasonably slow.  Experiment with setting `bs1` and `bs2` to different values and notice how the different buffer sizes change the amount of processing time. 
-
-Your code should show at least two different sizes you tried (and the resulting times).
+* https://docs.python.org/3/library/io.html#io.BufferedReader
+* https://docs.python.org/3/library/io.html#io.TextIOWrapper
 
 ## Part 4: Disaster Strikes
 
-Switch to `p3-part2.ipynb`. The rest of your project development will occur there. 
+Do the following:
+* manually kill one of the DataNode containers with a `docker kill` command
+* start a new notebook in Jupyter called `p4b.ipynb` -- use it for the remainder of your work
 
+#### Q8: how many live DataNodes are in the cluster?
 
-You have two datanodes.  What do you think will happen to `single.csv` and `double.csv` if one of these nodes dies?
-
-Find out by manually running a `docker kill <CONTAINER NAME>` command on your VM to abruptly stop one of the Datanodes.
-
-Wait until the Namenode realizes the Datanode has died before proceeding.  Run `!hdfs dfsadmin -fs hdfs://main:9000/ -report` (cell 4.1) in your notebook to see when this happens.  Before proceeding, the report should show one dead Datanode, something like the following:
-
-<details>
-<summary>Expand</summary>
-<pre>
-Configured Capacity: 83111043072 (77.40 GB)
-Present Capacity: 25509035132 (23.76 GB)
-DFS Remaining: 24980049920 (23.26 GB)
-DFS Used: 528985212 (504.48 MB)
-DFS Used%: 2.07%
-Replicated Blocks:
-	Under replicated blocks: 0
-	Blocks with corrupt replicas: 0
-	Missing blocks: 0
-	Missing blocks (with replication factor 1): 0
-	Low redundancy blocks with highest priority to recover: 0
-	Pending deletion blocks: 0
-Erasure Coded Block Groups: 
-	Low redundancy block groups: 0
-	Block groups with corrupt internal blocks: 0
-	Missing block groups: 0
-	Low redundancy blocks with highest priority to recover: 0
-	Pending deletion blocks: 0
-
-Live datanodes (1):
-
-Name: 172.19.0.4:9866 (spark-lecture-worker-1.cs544net)
-Hostname: 890e8d910f92
-Decommission Status : Normal
-Configured Capacity: 41555521536 (38.70 GB)
-DFS Used: 255594721 (243.75 MB)
-Non DFS Used: 28793143071 (26.82 GB)
-DFS Remaining: 12490006528 (11.63 GB)
-DFS Used%: 0.62%
-DFS Remaining%: 30.06%
-Configured Cache Capacity: 0 (0 B)
-Cache Used: 0 (0 B)
-Cache Remaining: 0 (0 B)
-Cache Used%: 100.00%
-Cache Remaining%: 0.00%
-Xceivers: 1
-Last contact: Sat Dec 31 20:07:46 GMT 2022
-Last Block Report: Sat Dec 31 20:04:00 GMT 2022
-Num of Blocks: 242
-
-Dead datanodes (1):
-
-Name: 172.19.0.3:9866 (172.19.0.3)
-Hostname: 70d2c4b6ccee
-Decommission Status : Normal
-Configured Capacity: 41555521536 (38.70 GB)
-DFS Used: 273390491 (260.73 MB)
-Non DFS Used: 28775310437 (26.80 GB)
-DFS Remaining: 12490043392 (11.63 GB)
-DFS Used%: 0.66%
-DFS Remaining%: 30.06%
-Configured Cache Capacity: 0 (0 B)
-Cache Used: 0 (0 B)
-Cache Remaining: 0 (0 B)
-Cache Used%: 100.00%
-Cache Remaining%: 0.00%
-Xceivers: 1
-Last contact: Sat Dec 31 20:06:15 GMT 2022
-Last Block Report: Sat Dec 31 20:04:00 GMT 2022
-Num of Blocks: 259
-</pre>
-</details>
-
-<br>
-Note that HDFS datanodes use heartbeats to inform the namenode of its liveness. That is, the datanodes send a small dummy message (heartbeat) periodically (every 3 seconds by default) to inform the namenode of its presence. Recall that when we start the namenode, we specify `dfs.namenode.stale.datanode.interval=10000` and `dfs.namenode.heartbeat.recheck-interval=30000`. The first says that the namenode considers the datanode stale if it does not receive its heartbeat for 10 seconds (10000 ms) and the second says that it will consider the datanode dead after another 30 seconds. Hence, if you configure your cluster correctly, the namenode will become aware of the loss of datanode within 40 seconds after you killed the datanode. 
-
-Run your code from part 3 again that counts the multi and single family dwellings in new cells.  Do so on both double.csv and single.csv. We again provide template code and variables for you to insert your implementation in. 
-
-double.csv should work just like before.  You will have lost some blocks from single.csv, but modify `readinto` in your `hdfsFile` class so that it still returns as much data as possible.  If reading a block
-from webhdfs fails, `readinto` should do the following:
-
-1. put `\n` into the `b` buffer
-2. move `self.offset` forward to the start of the next block
-3. return 1 (because `\n` is a single character)
-
-You should get some prints like this:
+This is the same question as Q1, but now there should only be one:
 
 ```
-Counts from double.csv
-Single Family: 444874
-Multi Family: 2493
+...
+Live datanodes (1)
+...
 ```
 
-AND
+You might need to wait a couple minutes and re-run this until the
+NameNode recognizes that the DataNode has died.
 
-```
-Counts from single.csv
-Single: 200608
-Multi: 929
+#### Q9: how are the blocks of single.csv distributed across the DataNode containers?
+
+This is the same as Q5, but you'll need to do a little extra work.
+When you make a request to the NameNode, check the status code
+(`r.status_code`).  If it is 403, use "lost" as the key for your
+count; otherwise, count as normal.
+
+Your output should look something like the following (again, your container ID and the exact counts will vary):
+
+```python
+{'c9e70330e663': 86, 'lost': 81}
 ```
 
-Observe that we're still getting some lines from single.csv, but only about half as many as before the data loss (exact counts will depend on how many blocks each datanode was storing).
+#### Q10: how many times does the text "Single Family" appear in the remaining blocks of single.csv?
+
+There are different ways of extracting the data that is still intact
+-- one approach would be to (a) identify good blocks using code from
+Q9 and (b) read the bytes for those healthy blocks using a read call
+similar to the one in Q6.
 
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker build -t p3-image ./image
-docker compose up
+docker build . -f hdfs.Dockerfile -t p4-hdfs
+docker build . -f namenode.Dockerfile -t p4-nn
+docker build . -f datanode.Dockerfile -t p4-dn
+docker build . -f notebook.Dockerfile -t p4-nb
+docker compose up -d
 ```
 
-We should then be able to open `http://localhost:5000/lab`, find your
-notebook, and run it.
+We should then be able to open `http://localhost:5000/lab` and find
+your `p4a.ipynb` and `p4b.ipynb` notebooks and run them.
+
+To make sure you didn't forget to push anything, we recommend doing a
+`git clone` of your repo to a new location and going through these
+steps as a last check on your submission.
+
+You're free to create and include other code files if you like (for
+example, you could write a .py module used by both notebooks).
 
 ## Tester:
 
