@@ -11,7 +11,7 @@ import pandas as pd
 from tester import init, test, cleanup, tester_main
 
 # key=num, val=answer (as string)
-notebook_answers = {}
+ANSWERS = {}
 
 global part2_json_content
 global main
@@ -129,6 +129,10 @@ def run_student_code():
     print(cmd)
     check_output(cmd, shell=True)
 
+    # make all notebooks writable (if only root can, it's a pain to delete/overwrite later)
+    cmd = (f"docker exec {container_name} sh -c 'chmod o+w nb/*.ipynb'")
+    print(cmd)
+    check_output(cmd, shell=True)
 
 def extract_notebook_answers(path):
     print(path)
@@ -146,7 +150,7 @@ def extract_notebook_answers(path):
             m = re.match(r"#[qQ](\d+)(.*)", cell["source"][0].strip())
             if not m:
                 continue
-            
+
             # found a answer cell, add its output to list
             qnum = int(m.group(1))
             notes = m.group(2).strip()
@@ -158,8 +162,12 @@ def extract_notebook_answers(path):
 
             for output in cell["outputs"]:
                 print("DEBUG", output)
-                
-            answers[qnum] = cell["outputs"]
+                if output.get("output_type") == "execute_result":
+                    answers[qnum] = "\n".join(output["data"]["text/plain"])
+                if output.get("output_type") == "stream":
+                    if not qnum in answers:
+                        answers[qnum] = "\n".join(output["text"])
+
     return answers
 
 
@@ -167,38 +175,26 @@ def extract_student_answers():
     path = Path("nb") / "tester-p4a.ipynb"
     print(path)
     if os.path.exists(path):
-        notebook_answers.update(extract_notebook_answers(path))
+        ANSWERS.update(extract_notebook_answers(path))
 
     path = Path("nb") / "tester-p4b.ipynb"
     if os.path.exists(path):
-        notebook_answers.update(extract_notebook_answers(path))
+        ANSWERS.update(extract_notebook_answers(path))
 
 
 @init
 def init(verbose = False):
-    #run_student_code()
+    run_student_code()
     extract_student_answers()
-    print(notebook_answers)
-    sys.exit(0)
 
 
-@test(points = 15, timeout = 300)
-def docker_cluster_launch_test():
-    global main
-    global worker1
-    global worker2
-    global ls_output
-    global lines
+@test(points=10)
+def q1():
+    if not 1 in ANSWERS:
+        raise Exception("Answer to question 1 not found")
+    if not "Live datanodes (2):" in ANSWERS[1]:
+        return "Q1 output does not indicate 2 live datanodes"
 
-    
-    if main and worker1 and worker2:
-        return None
-    elif lines:
-        return f"Failed (0/15): Did not detect at least three docker containers - docker ps outputed {ls_output}"
-
-    else:
-        return f"Failed (0/15): Could not find the docker containers main, worker1, and worker2 - docker ps outputed {ls_output}"
- 
 @test(points = 10, timeout = 100)
 def basic_setup_test():
     pwd = False
@@ -356,8 +352,4 @@ def post_diaster_count_test():
 
 if __name__ == "__main__":
     tester_main()
-    with open('/home/ockermans/tester/part_1_data.json', 'w') as f:
-        json.dump(parta_json_content,f)
-    with open('/home/ockermans/tester/part_2_data.json', 'w') as f:
-        json.dump(part2_json_content,f)
     cleanup()
