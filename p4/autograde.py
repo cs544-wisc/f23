@@ -1,21 +1,18 @@
+import os, datetime, json, time, re
+import subprocess
 from subprocess import check_output
-import os
-import datetime
-import nbformat
-from nbconvert.preprocessors import ExecutePreprocessor
-from tester import init, test, cleanup, tester_main
-import json
-import time
-import pandas as pd
-from io import StringIO
-import random
-import shutil
 from subprocess import Popen, PIPE
-import threading
+from pathlib import Path
+from io import StringIO
+
 import docker
+import pandas as pd
 
+from tester import init, test, cleanup, tester_main
 
-global part1_json_content 
+# key=num, val=answer (as string)
+notebook_answers = {}
+
 global part2_json_content
 global main
 global worker1
@@ -46,10 +43,13 @@ def run_command(command, timeout_val = None, throw_on_err = True, debug = False)
     return std_out, std_err
 
 def perform_startup(startup_timeout = 400, command_timeout = 20, bootup_buffer = 60, debug = False):
-
     cleanup()
-    result = subprocess.run(["docker", "build", "-t", "p4-image", "./image"], check=True, shell=False)
-  
+
+    check_output("docker build . -f hdfs.Dockerfile -t p4-hdfs", shell=True)
+    check_output("docker build . -f namenode.Dockerfile -t p4-nn", shell=True)
+    check_output("docker build . -f datanode.Dockerfile -t p4-dn", shell=True)
+    check_output("docker build . -f notebook.Dockerfile -t p4-nb", shell=True)
+
     # Start them using docker-compose up
     if debug:
         print("Starting all the containers")
@@ -57,21 +57,20 @@ def perform_startup(startup_timeout = 400, command_timeout = 20, bootup_buffer =
     # sleep so it has time to get setup
     time.sleep(10)
 
-    # Get the main container
+    # Get the notebook container
     std_out, _ = run_command("docker ps", timeout_val = command_timeout)
   
     specs_df = pd.read_csv(StringIO(std_out), sep='\s{2,}', engine='python', header=0)
     specs_df = specs_df[specs_df["PORTS"].str.contains("5000->5000")]
     container_name = specs_df.iloc[0]["NAMES"]
     if debug:
-        print("Got main container of", container_name)
+        print("Got notebook container of", container_name)
 
     return container_name
    
 
-
+# TODO: are we overriding the cleanup() function we import?
 def cleanup():
-
     try:
         # stop all running docker containers
         result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
@@ -80,12 +79,13 @@ def cleanup():
         
         # remove image to build it fresh
         result = subprocess.run(["docker", "compose", "down"], capture_output=True, check=True, shell=False)
+        # TODO: update this
         result = subprocess.run(["docker", "rmi", "-f", "p4-image"], check=True, shell=False)
-    except:
+    except Exception as ex:
         pass
-@init
-def init(verbose = False):
-    
+
+
+def run_student_code():
     container_name = perform_startup(debug=True)
     file_dir = os.path.abspath(__file__)
     tester_dir = os.path.dirname(file_dir)
@@ -103,14 +103,13 @@ def init(verbose = False):
     worker2 = "worker2" in ls_output
     worker1 = "worker1" in ls_output
 
-
-    run_command(f"docker cp {tester_dir}/simple_notebook_runner.py {container_name}:notebooks/")
-    
-    run_command(f"docker cp {path}/nb/p4-part1.ipynb {container_name}:/notebooks")
     print("Running Part 1 notebook... this will take a while")
-    run_command(f"docker exec {container_name} python3 notebooks/simple_notebook_runner.py 1")
-    run_command(f"docker cp {container_name}:part1-data.json .")
-
+    cmd = (f"docker exec {container_name} sh -c '" +
+                "export CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob` && " +
+                "python3 -m nbconvert --execute --to notebook " +
+                "nb/p4a.ipynb --output tester-p4a.ipynb'")
+    print(cmd)
+    check_output(cmd, shell=True)
 
     print("Killing worker 1")
     client = docker.from_env()
@@ -118,24 +117,70 @@ def init(verbose = False):
     for container in containers:
         if "worker1" in container.name:
             container.stop()
-    
+
     print("Sleeping for 90 seconds to give HDFS time to detect the stopped node as dead")
     time.sleep(90)
 
-    run_command(f"docker cp {path}/nb/p4-part2.ipynb {container_name}:/notebooks")
     print("Running Part 2 notebook... this will take a while")
-    run_command(f"docker exec {container_name} python3 notebooks/simple_notebook_runner.py 2")
-    run_command(f"docker cp {container_name}:part2-data.json .")
+    cmd = (f"docker exec {container_name} sh -c '" +
+                "export CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob` && " +
+                "python3 -m nbconvert --execute --to notebook " +
+                "nb/p4b.ipynb --output tester-p4b.ipynb'")
+    print(cmd)
+    check_output(cmd, shell=True)
 
 
-    global part1_json_content
-    global part2_json_content
-    with open("part1-data.json", "r") as json_file:
-        part1_json_content = json.load(json_file)
-    
-    with open("part2-data.json", "r") as json_file:
-        part2_json_content = json.load(json_file)
-    
+def extract_notebook_answers(path):
+    print(path)
+    answers = {}
+    with open(path) as f:
+        nb = json.load(f)
+        cells = nb["cells"]
+        expected_exec_count = 1
+
+        for cell in cells:
+            if cell["cell_type"] != "code":
+                continue
+            if not cell["source"]:
+                continue
+            m = re.match(r"#[qQ](\d+)(.*)", cell["source"][0].strip())
+            if not m:
+                continue
+            
+            # found a answer cell, add its output to list
+            qnum = int(m.group(1))
+            notes = m.group(2).strip()
+            if qnum in answers:
+                print(f"Warning: answer {qnum} repeated!")
+            expected = 1 + (max(answers.keys()) if answers else 0)
+            if qnum != expected:
+                print(f"Warning: Expected question {expected} next but found {qnum}!")
+
+            for output in cell["outputs"]:
+                print("DEBUG", output)
+                
+            answers[qnum] = cell["outputs"]
+    return answers
+
+
+def extract_student_answers():
+    path = Path("nb") / "tester-p4a.ipynb"
+    print(path)
+    if os.path.exists(path):
+        notebook_answers.update(extract_notebook_answers(path))
+
+    path = Path("nb") / "tester-p4b.ipynb"
+    if os.path.exists(path):
+        notebook_answers.update(extract_notebook_answers(path))
+
+
+@init
+def init(verbose = False):
+    #run_student_code()
+    extract_student_answers()
+    print(notebook_answers)
+    sys.exit(0)
+
 
 @test(points = 15, timeout = 300)
 def docker_cluster_launch_test():
@@ -159,7 +204,7 @@ def basic_setup_test():
     pwd = False
     docker = False
     wget = False
-    for cell in part1_json_content[0]['cells']:
+    for cell in parta_json_content[0]['cells']:
         if cell["cell_type"]  == "code":
             if "1.1" in cell['source']:
                 if "/\r\n" in cell['outputs'][0]['text']:
@@ -181,7 +226,7 @@ def basic_setup_test():
 def hdfs_setup_test():
     rep_settings = False
     block_size = False
-    for cell in part1_json_content[0]['cells']:
+    for cell in parta_json_content[0]['cells']:
         if cell["cell_type"]  == "code":
            
             if "1.4" in cell['source']:
@@ -208,7 +253,7 @@ def hdfs_setup_test():
 
 @test(points = 15, timeout = 100)
 def block_location_test():
-    for cell in part1_json_content[0]['cells']:
+    for cell in parta_json_content[0]['cells']:
         if cell["cell_type"]  == "code":
             if "2.1" in cell['source']:
 
@@ -228,7 +273,7 @@ def hdfs_count_test():
 
     d_family = False
     d_single = False
-    for cell in part1_json_content[0]['cells']:
+    for cell in parta_json_content[0]['cells']:
         if cell["cell_type"]  == "code":
             if "3.1" in cell['source']:
                 s_single = int(cell['outputs'][0]['data']['text/plain']) == 444874
@@ -248,7 +293,7 @@ def hdfs_count_test():
 @test(points = 15, timeout = 100)
 def different_buffer_size_tests():
     
-    for cell in part1_json_content[0]['cells']:
+    for cell in parta_json_content[0]['cells']:
         if cell["cell_type"]  == "code":
             if "3.3" in cell['source']:
                 t1 = float(cell['outputs'][0]['data']['text/plain'])
@@ -312,7 +357,7 @@ def post_diaster_count_test():
 if __name__ == "__main__":
     tester_main()
     with open('/home/ockermans/tester/part_1_data.json', 'w') as f:
-        json.dump(part1_json_content,f)
+        json.dump(parta_json_content,f)
     with open('/home/ockermans/tester/part_2_data.json', 'w') as f:
         json.dump(part2_json_content,f)
     cleanup()
