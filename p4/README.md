@@ -43,7 +43,7 @@ docker build . -f hdfs.Dockerfile -t p4-hdfs
 docker build . -f notebook.Dockerfile -t p4-nb
 ```
 
-The second image depends on the first one (`p4-hdfs`) -- you can see
+The second image depends on the first one (`p4-hdfs`) allowing us to avoid repeating imports --you can see
 this by checking the `FROM` line in "notebook.Dockerfile".
 
 The compose file also needs `p4-nn` (NameNode) and `p4-dn` (DataNode)
@@ -68,8 +68,16 @@ example, if you just restart+reformat the container with the NameNode,
 the old DataNodes will not work with the new NameNode without a more
 complicated process/config.
 
-#### Q1: how many live DataNodes are in the cluster?
 
+#### Data Upload
+
+Connect to JupyterLab running in the `p4-nb` container, and create a
+notebook called `p4a.ipynb` in the "/nb" directory (we'll do some
+later work in another notebook, `p4b.ipynb`).
+
+
+
+#### Q1: how many live DataNodes are in the cluster?
 Write a cell like this:
 
 ```
@@ -88,11 +96,7 @@ Live datanodes (2):
 ...
 ```
 
-#### Data Upload
 
-Connect to JupyterLab running in the `p4-nb` container, and create a
-notebook called `p4a.ipynb` in the "/nb" directory (we'll do some
-later work in another notebook, `p4b.ipynb`).
 
 Write some code (Python or shell) that downloads
 https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.csv if it
@@ -119,7 +123,7 @@ re-created, consider having a cell with the following, prior to the
 
 #### Q2: what are the logical and physical sizes of the CSV files?
 
-Run a `du` command with `hdfs dfs` to see.
+Run a `du` command with `hdfs dfs` to see. Include a comment `#q2` in that cell.
 
 You should see something like this:
 
@@ -134,15 +138,11 @@ difference in physical size due to replication, though.
 
 ## Part 2: WebHDFS
 
-The documents here describe how we can interact with HDFS via web
-requests:
-https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-hdfs/WebHDFS.html.
-Many examples show these web requests being made with the `curl`
-command, but you'll adapt those examples to use `requests.get`
-(https://requests.readthedocs.io/en/latest/user/quickstart/).
+The documents here describe how we can interact with HDFS via web requests: https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-hdfs/WebHDFS.html.
 
-By default, WebHDFS runs on port 9870 (so use that instead of 9000 for
-this part).
+Many examples show these web requests being made with the `curl` command, but you'll adapt those examples to use `requests.get` (https://requests.readthedocs.io/en/latest/user/quickstart/).
+
+By default, WebHDFS runs on port 9870. **So use port 9870 instead of 9000 for this part.**
 
 #### Q3: what is the file status for single.csv?
 
@@ -153,7 +153,7 @@ Note that if `r` is a response object, then `r.content` will contain
 some bytes, which you could convert to a dictionary; alternatively,
 `r.json()` does this for you.
 
-The result should look something like this:
+The result should look something like this and include `#q3` in the cell which produces the output:
 
 ```
 {'FileStatus': {...
@@ -171,9 +171,7 @@ questions.
 
 #### Q4: what is the location for the first block of single.csv?
 
-Use the `OPEN` operation with `offset` 0 and `noredirect=true`
-(`length` and `buffersize` are optional).
-
+Use the `OPEN` operation with `offset` 0 and `noredirect=true` - (`length` and `buffersize` are optional). Remember to include `#q4` in the cell.
 You answer should a string, similar to this:
 
 ```python
@@ -185,10 +183,9 @@ the container running the DataNode, so yours will be different.
 
 #### Q5: how are the blocks of single.csv distributed across the two DataNode containers?
 
-This is similar to above, except you should check every block and
-extract the container ID from the URL.
+This is similar to above, except you should check every block andextract the container ID from the URL.
 
-You should produce a Python dictionary like this (your IDs and counts will be different, of course):
+You should produce a Python dictionary similar to below (your IDs and counts will be different, of course). Output your dictonary in a cell and include `#q5`.
 
 ```python
 {'6a2464e4ba5c': 88, '805fe2ba2d15': 79}
@@ -204,6 +201,7 @@ NameNode.  Re-run, this time giving the cluster more time to come up.
 
 Use PyArrow to read the HFDS file.  You can connect to HDFS like this (the missing values are host and port, respectively):
 
+Hint: Think about which port we should connect on.
 ```python
 import pyarrow as pa
 import pyarrow.fs
@@ -215,6 +213,8 @@ file and return a `pyarrow.lib.NativeFile` object.
 
 You can use the `read_at` call on a `NativeFile` to get a specified
 number of bytes at a specified offset.
+
+Output the first 10 bytes of `single.csv` in a cell containing `#q6`.
 
 #### Q7: how many lines of single.csv contain the string "Single Family"?
 
@@ -230,6 +230,7 @@ you could optionally use to get this functionality, such as:
 * https://docs.python.org/3/library/io.html#io.BufferedReader
 * https://docs.python.org/3/library/io.html#io.TextIOWrapper
 
+Use these subclassses to loop through `single.csv` and count how many lines of `single.csv` contain the string `"Single Family`. Output your count in a cell which contains `#q7`.
 ## Part 4: Disaster Strikes
 
 Do the following:
@@ -246,9 +247,9 @@ Live datanodes (1)
 ...
 ```
 
-You might need to wait a couple minutes and re-run this until the
-NameNode recognizes that the DataNode has died.
+You might need to wait a couple minutes and re-run this until the NameNode recognizes that the DataNode has died.
 
+Use the same format as shown in Q1 except this time replace `#q1` with `#q8`.
 #### Q9: how are the blocks of single.csv distributed across the DataNode containers?
 
 This is the same as Q5, but you'll need to do a little extra work.
@@ -261,7 +262,7 @@ Your output should look something like the following (again, your container ID a
 ```python
 {'c9e70330e663': 86, 'lost': 81}
 ```
-
+Make sure the cell which produces this output contains the comment `#q9`.
 #### Q10: how many times does the text "Single Family" appear in the remaining blocks of single.csv?
 
 There are different ways of extracting the data that is still intact
@@ -269,6 +270,7 @@ There are different ways of extracting the data that is still intact
 Q9 and (b) read the bytes for those healthy blocks using a read call
 similar to the one in Q6.
 
+Once you decide on a solution, loop through `single.csv`, count the number of times "Single Family" appears in the remaining blocks of `single.csv`, and then output that count in a cell which contains `#q10`.
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
