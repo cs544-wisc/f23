@@ -54,8 +54,6 @@ def perform_startup(startup_timeout = 400, command_timeout = 20, bootup_buffer =
     if debug:
         print("Starting all the containers")
     std_out, _ = run_command("docker compose up -d", timeout_val = startup_timeout, debug = debug)
-    # sleep so it has time to get setup
-    time.sleep(10)
 
     # Get the notebook container
     std_out, _ = run_command("docker ps", timeout_val = command_timeout)
@@ -103,7 +101,30 @@ def run_student_code():
     worker2 = "worker2" in ls_output
     worker1 = "worker1" in ls_output
 
-    print("Running Part 1 notebook... this will take a while")
+    print("\n" + "="*70)
+    print("Waiting for HDFS cluster to stabalize... this may take a while")
+    print("="*70)
+    cmd = f"docker exec {container_name} hdfs dfsadmin -fs hdfs://boss:9000 -report"
+    print(cmd)    
+    for i in range(300):
+        try:
+            output = check_output(cmd, shell=True)
+            m = re.search(r"Live datanodes \((\d+)\)", str(output, "utf-8"))
+            if not m:
+                print("report didn't describe live datanodes")
+            else:
+                count = int(m.group(1))
+                print(f"found {count} live DataNodes")
+                if count >= 2:
+                    print("cluster is ready")
+                    break
+        except subprocess.CalledProcessError as e:
+            print("couldn't get report from NameNode")
+        time.sleep(1)
+
+    print("\n" + "="*70)
+    print("Running p4a.ipynb notebook... this will take a while")
+    print("="*70)
     cmd = (f"docker exec {container_name} sh -c '" +
                 "export CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob` && " +
                 "python3 -m nbconvert --execute --to notebook " +
@@ -111,17 +132,43 @@ def run_student_code():
     print(cmd)
     check_output(cmd, shell=True)
 
+    print("\n" + "="*70)
     print("Killing worker 1")
+    print("="*70)
     client = docker.from_env()
     containers = client.containers.list()
     for container in containers:
-        if "worker1" in container.name:
+        if "dn-1" in container.name:
+            print(f"stop {container.name}")
             container.stop()
+            break
+    else:
+         raise Exception("could not find worker to kill")   
 
-    print("Sleeping for 90 seconds to give HDFS time to detect the stopped node as dead")
-    time.sleep(90)
+    print("\n" + "="*70)
+    print("Waiting for NameNode to detect DataNode is dead... this may take a while")
+    print("="*70)
+    cmd = f"docker exec {container_name} hdfs dfsadmin -fs hdfs://boss:9000 -report"
+    print(cmd)    
+    for i in range(60):
+        try:
+            output = check_output(cmd, shell=True)
+            m = re.search(r"Live datanodes \((\d+)\)", str(output, "utf-8"))
+            if not m:
+                print("report didn't describe live datanodes")
+            else:
+                count = int(m.group(1))
+                print(f"NameNode thinks there are {count} live DataNodes")
+                if count < 2:
+                    print("DataNode death detected by NameNode")
+                    break
+        except subprocess.CalledProcessError as e:
+            print("couldn't get report from NameNode")
+        time.sleep(5)
 
-    print("Running Part 2 notebook... this will take a while")
+    print("\n" + "="*70)
+    print("Running p4b.ipynb notebook... this will take a while")
+    print("="*70)
     cmd = (f"docker exec {container_name} sh -c '" +
                 "export CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob` && " +
                 "python3 -m nbconvert --execute --to notebook " +
@@ -140,7 +187,6 @@ def extract_notebook_answers(path):
     with open(path) as f:
         nb = json.load(f)
         cells = nb["cells"]
-        expected_exec_count = 1
 
         for cell in cells:
             if cell["cell_type"] != "code":
@@ -156,12 +202,8 @@ def extract_notebook_answers(path):
             notes = m.group(2).strip()
             if qnum in answers:
                 print(f"Warning: answer {qnum} repeated!")
-            expected = 1 + (max(answers.keys()) if answers else 0)
-            if qnum != expected:
-                print(f"Warning: Expected question {expected} next but found {qnum}!")
 
             for output in cell["outputs"]:
-                print("DEBUG", output)
                 if output.get("output_type") == "execute_result":
                     answers[qnum] = "\n".join(output["data"]["text/plain"])
                 if output.get("output_type") == "stream":
@@ -170,10 +212,8 @@ def extract_notebook_answers(path):
 
     return answers
 
-
 def extract_student_answers():
     path = Path("nb") / "tester-p4a.ipynb"
-    print(path)
     if os.path.exists(path):
         ANSWERS.update(extract_notebook_answers(path))
 
@@ -186,174 +226,101 @@ def extract_student_answers():
 def init(verbose = False):
     run_student_code()
     extract_student_answers()
+    #print(ANSWERS)
 
-
+def check_has_answer(num):
+    if not num in ANSWERS:
+        raise Exception(f"Answer to question {num} not found")
+    
 @test(points=10)
 def q1():
-    if not 1 in ANSWERS:
-        raise Exception("Answer to question 1 not found")
+    check_has_answer(1)
     if not "Live datanodes (2):" in ANSWERS[1]:
-        return "Q1 output does not indicate 2 live datanodes"
+        return "Output does not indicate 2 live datanodes"
 
 @test(points=10)
 def q2():
-    if not 2 in ANSWERS:
-        raise Exception("Answer to question 2 not found")
-    
-# @test(points = 10, timeout = 100)
-# def basic_setup_test():
-#     pwd = False
-#     docker = False
-#     wget = False
-#     for cell in parta_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "1.1" in cell['source']:
-#                 if "/\r\n" in cell['outputs'][0]['text']:
-#                     pwd = True
-#             if "1.2" in cell['source']:  
-#                 if "/usr/bin/sh: 1: docker: not found" in cell['outputs'][0]['text']:
-#                     docker = True
-#             if "1.3" in cell['source']:
-#                 for line in cell['outputs'][0]['text'].split("\n"):
-#                     if "hdma-wi-2021.csv" in line:
-#                         wget = True
-            
-#     if pwd and wget and docker:
-#         return None
-#     else: 
-#         return f"Failed (0/10): Failed tests marked false -- 1. pwd test: {pwd}, 1.2 docker test: {docker}, 1.3 wget test: {wget}"
+    check_has_answer(2)
+    single = False
+    double = False
+    for line in ANSWERS[2].split("\n"):
+        if "166" in line and "333" not in line and "single" in line:
+            single = True
+        if "166" in line and "333" in line and "double" in line:
+            double = True
+    if not single:
+        return "Expected a line like '166.8 M  166.8 M  hdfs://boss:9000/single.csv'"
+    if not double:
+        return "Expected a line like '166.8 M  333.7 M  hdfs://boss:9000/double.csv'"
 
-# @test(points = 15, timeout = 100)
-# def hdfs_setup_test():
-#     rep_settings = False
-#     block_size = False
-#     for cell in parta_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-           
-#             if "1.4" in cell['source']:
+@test(points=10)
+def q3():
+    check_has_answer(3)
+    d = json.loads(ANSWERS[3])
+    assert "FileStatus" in d
+    assert "single.csv" in ANSWERS[3]
+    assert "double.csv" in ANSWERS[3]
 
-#                 double = False
-#                 single = False
-#                 for line in cell['outputs'][0]['text'].split("\n"):
-#                     if 'single.csv' in line:
-#                         if "166.8" in line and line.count("166.8") == 2:
-#                             single = True
-#                     if 'double.csv' in line:
-#                         if '333.7' in line:
-#                             double = True
-#                 rep_settings = single and double
-            
-        
-#             if "1.5" in cell['source']:
-#                 if '1048576' in cell['outputs'][1]['text'] and '1048576' in cell['outputs'][3]['text']:
-#                     block_size = True
-#     if rep_settings and block_size:
-#         return None
-#     else:
-#         return f"Failed (0/15): Failed tests marked false -- 1.4 replication settings check: {rep_settings}, 1.5 block size check: {block_size}"
+@test(points=10)
+def q3():
+    check_has_answer(3)
+    # single quote => double quote turns Python dict into JSON
+    d = json.loads(ANSWERS[3].replace("'", '"'))
+    assert "FileStatus" in d
+    assert d["FileStatus"]["blockSize"] == 1048576
+    assert d["FileStatus"]["length"] == 174944099
 
-# @test(points = 15, timeout = 100)
-# def block_location_test():
-#     for cell in parta_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "2.1" in cell['source']:
+@test(points=10)
+def q4():
+    check_has_answer(4)
+    assert ":9864/webhdfs/v1/single.csv?op=OPEN&namenoderpcaddress=boss:9000&offset=0" in ANSWERS[4]
 
-                
-#                 output = cell['outputs'][0]['data']['text/plain']
-#                 output = output.strip("\,\{\} ").split("\n")
-#                 count_1 = int(output[0].split(":")[3].strip(" ,"))
-#                 count_2 = int(output[1].split(":")[3])
-#                 if count_1 + count_2 == 167:
-#                     return None
-#     return f"Failed (0/15): Count 1 and Count2 did not add up to 167 -- count 1: {count_1}, count 2: {count_2}"
+@test(points=10)
+def q5():
+    check_has_answer(5)
+    # single quote => double quote turns Python dict into JSON
+    d = json.loads(ANSWERS[5].replace("'", '"'))
+    assert len(d) == 2
+    assert min(d.values()) > 1
+    assert sum(d.values()) == 167
 
-# @test(points = 15, timeout = 100)
-# def hdfs_count_test():
-#     s_family = False
-#     s_single = False
+@test(points=10)
+def q6():
+    check_has_answer(6)
+    assert ANSWERS[6] == "b'activity_y'"
 
-#     d_family = False
-#     d_single = False
-#     for cell in parta_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "3.1" in cell['source']:
-#                 s_single = int(cell['outputs'][0]['data']['text/plain']) == 444874
-#             if "3.2" in cell['source']:
-#                 s_family = int(cell['outputs'][0]['data']['text/plain']) == 2493
-#             if "3.4" in cell['source']:
-#                 d_single = int(cell['outputs'][0]['data']['text/plain']) == 444874
-#             if "3.5" in cell['source']:
-#                 d_family = int(cell['outputs'][0]['data']['text/plain']) == 2493
-    
+@test(points=10)
+def q7():
+    check_has_answer(7)
+    assert int(ANSWERS[7]) == 444874
 
-#     if s_family and s_single and d_family and d_single:
-#         return None
-#     return f"Failed (0/15): Incorrect counts marked false -- singe.csv \"single\" line count {s_single}, singe.csv \"family\" line count {s_family} \
-#             double.csv \"single\" line count {d_single}, double.csv \"family\" line count {d_family}"
+@test(points=10)
+def q8():
+    check_has_answer(8)
+    if not "Live datanodes (1):" in ANSWERS[8]:
+        return "Output does not indicate 2 live datanodes"
 
-# @test(points = 15, timeout = 100)
-# def different_buffer_size_tests():
-    
-#     for cell in parta_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "3.3" in cell['source']:
-#                 t1 = float(cell['outputs'][0]['data']['text/plain'])
-#             if "3.6" in cell['source']:
-#                 t2 = float(cell['outputs'][0]['data']['text/plain'])
-#             if "3.7" in cell['source']:
-#                 temp =  cell['outputs'][0]['data']['text/plain'].strip(" () ").split(",")
-#                 bs1 = int(temp[0].strip(" "))
-#                 bs2 = int(temp[1].strip(" "))
-#     if (t1 != t2 and bs1 != bs2):
-#                 return None
-    
-#     return f"Failed (0/10): Either your times or your buffer sizes matched -- time1: {t1}, time2: {t2}, buffer size 1: {bs1}, buffer size 2: {bs2}"
+@test(points=10)
+def q9():
+    check_has_answer(9)
+    # single quote => double quote turns Python dict into JSON
+    d = json.loads(ANSWERS[9].replace("'", '"'))
+    assert len(d) == 2
+    assert min(d.values()) > 1
+    assert sum(d.values()) == 167
+    assert "lost" in d
 
-# @test(points=10)
-# def dfs_admin_test():
-#     for cell in part2_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "4.1" in cell['source']:
-
-#                 for outputs in cell['outputs']:
-#                     if "Dead datanodes (1):" in outputs['text']:
-#                         return None
-#     return "FAILED (0/10): hdfs dfsadmin -fs hdfs://main:9000/ -report did not show a dead datanode"
-
-# @test(points=10)
-# def newline_test():
-#     for cell in part2_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "4.2" in cell['source']:
-#                 if int(cell['outputs'][0]['data']['text/plain']) > 0:
-#                     return None
-#     return "FAILED (0/10): no newline replacments detected"
-
-# @test(points=10)
-# def post_diaster_count_test():
-#     s_family = False
-#     s_single = False
-
-#     d_family = False
-#     d_single = False
-
-#     for cell in part2_json_content[0]['cells']:
-#         if cell["cell_type"]  == "code":
-#             if "4.3" in cell['source']:
-#                 if 10000 < int(cell['outputs'][0]['data']['text/plain']) < 444874:
-#                     s_single = True 
-#             if "4.4" in cell['source']:
-#                 if 500 < int(cell['outputs'][0]['data']['text/plain']) < 2493:
-#                     s_family = True
-#             if "4.5" in cell['source']:
-#                 d_single = int(cell['outputs'][0]['data']['text/plain']) == 444874
-#             if "4.6" in cell['source']:
-#                 d_family = int(cell['outputs'][0]['data']['text/plain']) == 2493
-#     if s_family and s_single and d_family and d_single:
-#         return None
-#     return f"FAILED (0/10): Incorrect counts marked false -- singe.csv \"single\" line count {s_single}, singe.csv \"family\" line count {s_family} \
-#             double.csv \"single\" line count {d_single}, double.csv \"family\" line count {d_family}"
-
+@test(points=10)
+def q10():
+    check_has_answer(10)
+    count = int(ANSWERS[10])
+    total = 444874
+    if count < 0 or count > total:
+        raise Exception(f"count={count} is outside range of 0 to {444874}")
+    if count == 0:
+        raise Exception(f"count was 0, suggesting every data block was lost (not likely)")
+    if count == total:
+        raise Exception(f"count was {total}, suggesting no data blocks were lost (not likely)")
 
 if __name__ == "__main__":
     tester_main()

@@ -115,7 +115,7 @@ def save_results(results):
     output_file = f"{TEST_DIR}/test.json"
     print(f"Output written to: {output_file}")
     with open(output_file, "w") as f:
-        json.dump(results, f)
+        json.dump(results, f, indent=2)
 
 
 def tester_main():
