@@ -112,7 +112,6 @@ def run_tests():
         print("=======================")
     # and results['score'] != results["full_score"]
     if DEBUG and GO_FOR_DEBUG:
-        print("Creating debugging directory")
         DEBUG()
     # cleanup code after all tests run
     shutil.rmtree(TMP_DIR)

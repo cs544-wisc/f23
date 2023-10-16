@@ -74,6 +74,15 @@ def docker_reset():
         result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
         if result.stdout.decode('utf-8').count("\n") > 1:
             subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
+        # # stop all running docker containers
+        # result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
+        # if result.stdout.decode('utf-8').count("\n") > 1:
+        #     subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
+        
+        # # remove image to build it fresh
+        # result = subprocess.run(["docker", "compose", "down"], capture_output=True, check=True, shell=False)
+        # # TODO: update this
+        # result = subprocess.run(["docker", "rmi", "-f", "p4-image"], check=True, shell=False)
     except Exception as ex:
         pass
 
@@ -230,11 +239,11 @@ def diagnostic_checks():
 def create_debug_dir():
     file_dir = os.path.abspath(__file__)
     tester_dir = os.path.dirname(file_dir)
-    print("tester_dir: ", file_dir)
+    
     
     target = f"{tester_dir}/notebooks_from_test/"
-    print("target: ", target)
-    check_output(f"mkdir {target} && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
+    print("Creating debug direcrory: ", target)
+    check_output(f"mkdir -p {target} && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
 
 @init
 def init(verbose = False):
