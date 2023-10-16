@@ -18,7 +18,7 @@ damaged file.
 
 Learning objectives:
 * use the HDFS command line client to upload files
-* use the webhdfs API (https://hadoop.apache.org/docs/r1.0.4/webhdfs.html) to read files
+* use the webhdfs API (https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-hdfs/WebHDFS.html) to read files
 * use PyArrow to read HDFS files
 * relate replication count to space efficiency and fault tolerance
 
@@ -75,10 +75,9 @@ Connect to JupyterLab running in the `p4-nb` container, and create a
 notebook called `p4a.ipynb` in the "/nb" directory (we'll do some
 later work in another notebook, `p4b.ipynb`).
 
-
-
 #### Q1: how many live DataNodes are in the cluster?
-Write a cell like this:
+
+Write a cell like this (and use a similar format for other questions):
 
 ```
 #q1
@@ -95,8 +94,6 @@ time to show up):
 Live datanodes (2):
 ...
 ```
-
-
 
 Write some code (Python or shell) that downloads
 https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.csv if it
@@ -123,7 +120,7 @@ re-created, consider having a cell with the following, prior to the
 
 #### Q2: what are the logical and physical sizes of the CSV files?
 
-Run a `du` command with `hdfs dfs` to see. Include a comment `#q2` in that cell.
+Run a `du` command with `hdfs dfs` to see.
 
 You should see something like this:
 
@@ -153,7 +150,7 @@ Note that if `r` is a response object, then `r.content` will contain
 some bytes, which you could convert to a dictionary; alternatively,
 `r.json()` does this for you.
 
-The result should look something like this and include `#q3` in the cell which produces the output:
+The result should look something like this:
 
 ```
 {'FileStatus': {...
@@ -171,7 +168,7 @@ questions.
 
 #### Q4: what is the location for the first block of single.csv?
 
-Use the `OPEN` operation with `offset` 0 and `noredirect=true` - (`length` and `buffersize` are optional). Remember to include `#q4` in the cell.
+Use the `OPEN` operation with `offset` 0 and `noredirect=true` - (`length` and `buffersize` are optional).
 You answer should a string, similar to this:
 
 ```python
@@ -185,7 +182,7 @@ the container running the DataNode, so yours will be different.
 
 This is similar to above, except you should check every block andextract the container ID from the URL.
 
-You should produce a Python dictionary similar to below (your IDs and counts will be different, of course). Output your dictonary in a cell and include `#q5`.
+You should produce a Python dictionary similar to below (your IDs and counts will be different, of course).
 
 ```python
 {'6a2464e4ba5c': 88, '805fe2ba2d15': 79}
@@ -214,7 +211,7 @@ file and return a `pyarrow.lib.NativeFile` object.
 You can use the `read_at` call on a `NativeFile` to get a specified
 number of bytes at a specified offset.
 
-Output the first 10 bytes of `single.csv` in a cell containing `#q6`.
+Output the first 10 bytes of `single.csv`.
 
 #### Q7: how many lines of single.csv contain the string "Single Family"?
 
@@ -230,7 +227,6 @@ you could optionally use to get this functionality, such as:
 * https://docs.python.org/3/library/io.html#io.BufferedReader
 * https://docs.python.org/3/library/io.html#io.TextIOWrapper
 
-Use these subclassses to loop through `single.csv` and count how many lines of `single.csv` contain the string `"Single Family`. Output your count in a cell which contains `#q7`.
 ## Part 4: Disaster Strikes
 
 Do the following:
@@ -249,7 +245,6 @@ Live datanodes (1)
 
 You might need to wait a couple minutes and re-run this until the NameNode recognizes that the DataNode has died.
 
-Use the same format as shown in Q1 except this time replace `#q1` with `#q8`.
 #### Q9: how are the blocks of single.csv distributed across the DataNode containers?
 
 This is the same as Q5, but you'll need to do a little extra work.
@@ -262,7 +257,7 @@ Your output should look something like the following (again, your container ID a
 ```python
 {'c9e70330e663': 86, 'lost': 81}
 ```
-Make sure the cell which produces this output contains the comment `#q9`.
+
 #### Q10: how many times does the text "Single Family" appear in the remaining blocks of single.csv?
 
 There are different ways of extracting the data that is still intact
@@ -270,7 +265,8 @@ There are different ways of extracting the data that is still intact
 Q9 and (b) read the bytes for those healthy blocks using a read call
 similar to the one in Q6.
 
-Once you decide on a solution, loop through `single.csv`, count the number of times "Single Family" appears in the remaining blocks of `single.csv`, and then output that count in a cell which contains `#q10`.
+Once you decide on a solution, loop through `single.csv`, count the number of times "Single Family" appears in the remaining blocks of `single.csv`, and then output that count.
+
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
