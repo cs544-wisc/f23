@@ -4,21 +4,17 @@ from subprocess import check_output
 from subprocess import Popen, PIPE
 from pathlib import Path
 from io import StringIO
-
+import argparse
 import docker
 import pandas as pd
-
-from tester import init, test, tester_main
+import sys
+from tester import init, test, tester_main, debug
 
 # key=num, val=answer (as string)
 ANSWERS = {}
 
-global part2_json_content
-global main
-global worker1
-global worker2
-global lines
-global ls_output 
+
+
 
 def run_command(command, timeout_val = None, throw_on_err = True, debug = False):
     command_to_run = command.split(" ")
@@ -43,7 +39,7 @@ def run_command(command, timeout_val = None, throw_on_err = True, debug = False)
     return std_out, std_err
 
 def perform_startup(startup_timeout = 400, command_timeout = 20, bootup_buffer = 60, debug = False):
-    cleanup()
+    docker_reset()
 
     check_output("docker build . -f hdfs.Dockerfile -t p4-hdfs", shell=True)
     check_output("docker build . -f namenode.Dockerfile -t p4-nn", shell=True)
@@ -67,18 +63,26 @@ def perform_startup(startup_timeout = 400, command_timeout = 20, bootup_buffer =
     return container_name
    
 
-# TODO: are we overriding the cleanup() function we import?
-def cleanup():
+def docker_reset():
     try:
-        # stop all running docker containers
+        subprocess.run(["docker compose kill; docker compose rm -f"], shell=True)
+        subprocess.run(["docker", "rmi", "-f", "p4-nb"], check=True, shell=False)
+        subprocess.run(["docker", "rmi", "-f", "p4-nn"], check=True, shell=False)
+        subprocess.run(["docker", "rmi", "-f", "p4-dn"], check=True, shell=False)
+        subprocess.run(["docker", "rmi", "-f", "p4-hdfs"], check=True, shell=False)
+
         result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
         if result.stdout.decode('utf-8').count("\n") > 1:
             subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
+        # # stop all running docker containers
+        # result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
+        # if result.stdout.decode('utf-8').count("\n") > 1:
+        #     subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
         
-        # remove image to build it fresh
-        result = subprocess.run(["docker", "compose", "down"], capture_output=True, check=True, shell=False)
-        # TODO: update this
-        result = subprocess.run(["docker", "rmi", "-f", "p4-image"], check=True, shell=False)
+        # # remove image to build it fresh
+        # result = subprocess.run(["docker", "compose", "down"], capture_output=True, check=True, shell=False)
+        # # TODO: update this
+        # result = subprocess.run(["docker", "rmi", "-f", "p4-image"], check=True, shell=False)
     except Exception as ex:
         pass
 
@@ -89,20 +93,11 @@ def run_student_code():
     tester_dir = os.path.dirname(file_dir)
     path,_ = run_command("pwd")
     
+    
     # for a later test
-    global lines
-    global main
-    global worker1
-    global worker2
-    global ls_output
-    ls_output = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False).stdout.decode('utf-8')
-    lines = len(ls_output.split("\n")) <= 3
-    main = "main" in ls_output
-    worker2 = "worker2" in ls_output
-    worker1 = "worker1" in ls_output
 
     print("\n" + "="*70)
-    print("Waiting for HDFS cluster to stabalize... this may take a while")
+    print("Waiting for HDFS cluster to stabilize... this may take a while")
     print("="*70)
     cmd = f"docker exec {container_name} hdfs dfsadmin -fs hdfs://boss:9000 -report"
     print(cmd)    
@@ -221,12 +216,40 @@ def extract_student_answers():
     if os.path.exists(path):
         ANSWERS.update(extract_notebook_answers(path))
 
+def diagnostic_checks():
+
+    out, _ = run_command("cat /etc/os-release")
+    if "VERSION=\"22.04.3 LTS (Jammy Jellyfish)\"" not in out and "Ubuntu 22.04.3 LTS" not in out:
+        print("WARNING - you should be using UBUNTU 22.04.3 LTS (Jammy Jellyfish)")
+
+    out, _ = run_command("lscpu")
+    if "x86_64" not in out:
+        print("WARNING - are you using an x86 Architecture")
+    try:
+        out, _ = run_command("wget -q -O - --header Metadata-Flavor:Google metadata/computeMetadata/v1/instance/machine-type")
+        if "e2-medium" not in out:
+            print("WARNING - did you switch to an E-2 Medium")
+    except:
+        pass
+    
+    
+    
+
+@debug
+def create_debug_dir():
+    file_dir = os.path.abspath(__file__)
+    tester_dir = os.path.dirname(file_dir)
+    print("tester_dir: ", file_dir)
+    
+    target = f"{tester_dir}/notebooks_from_test/"
+    print("target: ", target)
+    check_output(f"mkdir {target} && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
 
 @init
 def init(verbose = False):
     run_student_code()
     extract_student_answers()
-    #print(ANSWERS)
+    
 
 def check_has_answer(num):
     if not num in ANSWERS:
@@ -323,5 +346,6 @@ def q10():
         raise Exception(f"count was {total}, suggesting no data blocks were lost (not likely)")
 
 if __name__ == "__main__":
+    diagnostic_checks()
     tester_main()
-    cleanup()
+    docker_reset()

@@ -290,5 +290,11 @@ You're free to create and include other code files if you like (for
 example, you could write a .py module used by both notebooks).
 
 ## Tester:
-
-TODO
+* After you push your final submission, try cloning your repo into a new temp folder and run the test there; this will simulate how we run the tests during grading. 
+* Make sure your answers are in cell output - not print statements (see the example below)
+```
+my_answer = []
+for i in range(5):
+  my_answer.append(5)
+my_answer
+```
