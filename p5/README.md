@@ -26,14 +26,15 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* Mar 21: removed "agency" views to create
+Oct 15: remove ambiguity in some questions like Q3; remove Q9 and Q10 (Caching)
+<!-- * Mar 21: removed "agency" views to create
 * Mar 25: clarified that Q8 is for top 10; this is over all loans (not one bank)
 * Mar 29: made q4 more flexible to accomodate different approaches
-* Mar 30: Q6 is asking under what situation (when) you need Network I/O. If one of your queries does not need Network I/O explain why.
+* Mar 30: Q6 is asking under what situation (when) you need Network I/O. If one of your queries does not need Network I/O explain why. -->
 
 ## Machine Setup
 
-~4 GB is barely enough for this project.  Take a moment to enable a 1
+~4 GB is barely enough for this project. Brefore you start, take a moment to enable a 1
 GB swap file to supplement.  A swap file exists on storage, but acts
 as extra memory.  Note this has performance implications as storage is
 much slower than RAM.
@@ -69,9 +70,9 @@ spark = (SparkSession.builder.appName("cs544")
 ```
 
 Download these files for this project:
-* https://pages.cs.wisc.edu/~harter/cs639/data/hdma-wi-2021.zip
-* https://pages.cs.wisc.edu/~harter/cs639/data/arid2017_to_lei_xref_csv.zip
-* https://pages.cs.wisc.edu/~harter/cs639/data/code_sheets.zip
+* https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip
+* https://pages.cs.wisc.edu/~harter/cs544/data/arid2017_to_lei_xref_csv.zip
+* https://pages.cs.wisc.edu/~harter/cs544/data/code_sheets.zip
 
 Each zip contains one or more CSV files.  Upload each CSV to HDFS.
 You can use shell commands and/or Python code, but be sure to show
@@ -117,14 +118,9 @@ You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like th
 Your filtering should be case insensative.  We're looking for a number
 for the first part and an actual listing for the second part.
 
-#### Q3: how many loan applications has your "favorite" bank received in the dataset?
+#### Q3: how many loan applications has the bank "University of Wisconsin Credit Union" received in the dataset?
 
-Browse the dataset a bit and pick a "favorite" bank for these
-questions.  It could be one you use, or has an interesting name, or is
-popular in WI.  You need to pick one that has at least a couple
-hundred loans in the dataset
-
-Use an `INNER JOIN` between `banks` and `loans` to anser this
+Use an `INNER JOIN` between `banks` and `loans` to answer this
 question.  `lei` in loans lets you identify the bank.  Filter on
 `respondent_name` (do NOT hardcode the LEI).
 
@@ -135,7 +131,7 @@ Show `results.explain("formatted")` and write a comment making observations abou
 2. on which tables is "is not null" filtering added by the optimizer?
 3. does the plan involve `HashAggregate`s (depending on how you write the query, it may or may not)?  If so, which ones?
 
-#### Q5: what are the top 10 biggest loans (in terms of `loan_amount`) that were approved by your favorite bank?
+#### Q5: what are the top 10 biggest loans (in terms of `loan_amount`) that were approved by "University of Wisconsin Credit Union"?
 
 A loan is approved if `action_taken` is "Loan originated".  Your
 answer should have the following columns: census_tract, county,
@@ -143,8 +139,7 @@ loan_purpose, derived_dwelling_category, thousands, interest_rate,
 years, action_taken
 
 Join with the appropriate views to get the values for these columns.
-It should look like the following (though will differ depending on
-which bank you picked):
+It should look like the following:
 
 <img src="q5.png">
 
@@ -161,7 +156,7 @@ Joining `counties` will be a very tricky.  Tips:
 
 #### Q6: when computing a MEAN aggregate per group of loans, under what situation (when) do we require network I/O between the `partial_mean` and `mean` operations?
 
-Write some simple `GROUP BY` queries on `loans` and call .explain().  Try grouping by both the `county_code` and `lei` columns.
+Write some simple `GROUP BY` queries on `loans` and call .explain().  Try grouping by the `county_code`. Then try grouping by the `lei` columns.
 
 If a network transfer (network I/O) is necessary for one query but not the other,
 write a comment explaining why.  You might want to look back at how
@@ -189,7 +184,11 @@ Hint: if we were asking for the biggest in each county, you would use
 `GROUP BY` and `MAX`.  We're asking for the second biggest, so you
 should see if a windowing function can help.
 
-## Part 4: Caching
+## Part 4: Spark ML (TBD)
+
+<!-- remove Caching  -->
+<!-- ####################################### -->
+<!-- ## Part 4: Caching
 
 Create a DataFrame from the following query:
 
@@ -227,14 +226,14 @@ Make a plot like the following to show how much work each has completed:
 Hints:
 * you can use `http://localhost:4040/api/v1/applications` to find your app's ID
 * you can use `http://localhost:4040/api/v1/applications/{app_id}/executors` to find stats about executors for your app
-* a correct experiment should show one executor always does the work (whichever one is caching the partition).  Results may vary in terms of which of the two executors do the work or initial  counts prior to the start of the experiment
+* a correct experiment should show one executor always does the work (whichever one is caching the partition).  Results may vary in terms of which of the two executors do the work or initial  counts prior to the start of the experiment -->
 
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker build -t p4-image ./image
+docker build -t p4-image ./image 
 docker compose up -d
 ```
 
