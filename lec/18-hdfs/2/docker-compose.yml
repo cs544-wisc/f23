@@ -1,0 +1,22 @@
+services:
+    hdfs:
+        image: p4-hdfs
+        hostname: main
+        ports:
+        - "127.0.0.1:9870:9870"
+        deploy:
+                resources:
+                        limits:
+                                memory: 2g
+        command: sleep infinity
+
+    nb:
+        image: p4-nb
+        ports:
+        - "127.0.0.1:5000:5000"
+        volumes:
+        - "./nb:/nb"
+        deploy:
+                resources:
+                        limits:
+                                memory: 2g
