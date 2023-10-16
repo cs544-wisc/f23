@@ -57,7 +57,7 @@ Setup an environment with three containers, running the following:
 
 For inspiration, here are some files that could help: [Container Setup Files](./containers.md)
 
-Create a `p4.ipynb` notebook and create a session.  We'll enable Hive, with metadata stored on HDFS:
+Create a `p5.ipynb` notebook and create a session.  We'll enable Hive, with metadata stored on HDFS:
 
 ```python
 from pyspark.sql import SparkSession
@@ -76,7 +76,7 @@ Download these files for this project:
 
 Each zip contains one or more CSV files.  Upload each CSV to HDFS.
 You can use shell commands and/or Python code, but be sure to show
-your work in `p4.ipynb`.  Register or load the data into Spark.
+your work in `p5.ipynb`.  Register or load the data into Spark.
 
 Requirements:
 * let Spark infer the schema
@@ -184,7 +184,101 @@ Hint: if we were asking for the biggest in each county, you would use
 `GROUP BY` and `MAX`.  We're asking for the second biggest, so you
 should see if a windowing function can help.
 
-## Part 4: Spark ML (TBD)
+## Part 4: Spark ML
+The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications.
+
+### I. Data Preparation
+The target variable, `action_taken`, is assumed to indicate the outcome of a loan application. And for this exercise, we will use the features `loan_amount`, `income`, `loan_type`, `interest_rate` for prediction. 
+
+First, as a prepartory step, fetch the features and target variable from the loans table into a new dataframe `df`. Cast the `loan_amount` and `income` columns to `double` type and drop the rows with missing values.
+
+Then, we split `df` as follows and write both the train and test dataframes to parquet files:
+```python
+# deterministic split
+train, test = df.randomSplit([0.7, 0.3], seed=41) 
+
+```
+
+
+### II. Training and Evaluation
+Do some imports:
+
+```python
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.classification import DecisionTreeClassifier
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+```
+
+Read your train and test parquet files.
+
+Use the VectorAssembler to combine the feature columns `loan_amount`, `income`, `loan_type`, `interest_rate` into a
+single column.
+
+```python
+assembler = VectorAssembler(??) 
+```
+
+Train a `DecisionTreeClassifier` of max depth 5 on your training data to predict
+`action_taken` based on the features. 
+
+```python
+dt_classifier = DecisionTreeClassifier(??)
+```
+
+Print the decision tree with `toDebugString` -- something like this:
+
+```
+DecisionTreeClassificationModel: uid=DecisionTreeClassifier_018472239ed0, depth=5, numNodes=25, numClasses=9, numFeatures=4
+  If (feature 0 <= 170000.0)
+   If (feature 3 <= 4.495)
+    If (feature 1 <= 58.5)
+     If (feature 0 <= 120000.0)
+      Predict: 1.0
+     Else (feature 0 > 120000.0)
+      If (feature 3 <= 1.4325)
+       Predict: 6.0
+      Else (feature 3 > 1.4325)
+       Predict: 1.0
+    Else (feature 1 > 58.5)
+     Predict: 1.0
+   Else (feature 3 > 4.495)
+    If (feature 1 <= 86.5)
+     If (feature 2 <= 2.5)
+      Predict: 1.0
+     Else (feature 2 > 2.5)
+      If (feature 1 <= 78.5)
+       Predict: 1.0
+      Else (feature 1 > 78.5)
+       Predict: 2.0
+    Else (feature 1 > 86.5)
+     Predict: 1.0
+  Else (feature 0 > 170000.0)
+   If (feature 3 <= 2.495)
+    Predict: 1.0
+   Else (feature 3 > 2.495)
+    If (feature 1 <= 27.5)
+     If (feature 2 <= 1.5)
+      Predict: 1.0
+     Else (feature 2 > 1.5)
+      If (feature 3 <= 3.745)
+       Predict: 1.0
+      Else (feature 3 > 3.745)
+       Predict: 6.0
+    Else (feature 1 > 27.5)
+     Predict: 1.0
+```
+
+Use the model to make predictions on the test data.  What is the
+*accuracy* (percent of times the model is correct)? 
+
+```python
+predictions = dt_model.transform(test)
+
+evaluator = MulticlassClassificationEvaluator(??)
+accuracy = evaluator.evaluate(predictions)
+print(f"accuracy = {accuracy*100:.2f}%")
+```
+
 
 <!-- remove Caching  -->
 <!-- ####################################### -->
@@ -233,7 +327,7 @@ Hints:
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker build -t p4-image ./image 
+docker build -t p5-image ./image 
 docker compose up -d
 ```
 
