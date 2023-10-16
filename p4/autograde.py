@@ -74,15 +74,6 @@ def docker_reset():
         result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
         if result.stdout.decode('utf-8').count("\n") > 1:
             subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
-        # # stop all running docker containers
-        # result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
-        # if result.stdout.decode('utf-8').count("\n") > 1:
-        #     subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
-        
-        # # remove image to build it fresh
-        # result = subprocess.run(["docker", "compose", "down"], capture_output=True, check=True, shell=False)
-        # # TODO: update this
-        # result = subprocess.run(["docker", "rmi", "-f", "p4-image"], check=True, shell=False)
     except Exception as ex:
         pass
 

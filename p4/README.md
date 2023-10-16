@@ -290,6 +290,7 @@ You're free to create and include other code files if you like (for
 example, you could write a .py module used by both notebooks).
 
 ## Tester:
+* Run `setup.sh` to install the packages needed for the autograder (you may already have them installed - just in case)
 * After you push your final submission, try cloning your repo into a new temp folder and run the test there; this will simulate how we run the tests during grading. 
 * Make sure your answers are in cell output - not print statements (see the example below)
 ```
