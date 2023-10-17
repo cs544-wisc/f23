@@ -1,5 +1,3 @@
-# DRAFT!  Don't start yet.
-
 # P4 (6% of grade): HDFS Replication
 
 ## Overview
@@ -290,8 +288,11 @@ You're free to create and include other code files if you like (for
 example, you could write a .py module used by both notebooks).
 
 ## Tester:
+* Expected that you use Python 3.10.12
 * Run `setup.sh` to install the packages needed for the autograder (you may already have them installed - just in case)
 * After you push your final submission, try cloning your repo into a new temp folder and run the test there; this will simulate how we run the tests during grading. 
+* Copy in `tester.py` from the main github directory into your p4 folder
+* You can run `python3 autograder.y -g` to create a debug directory which will contain the notebooks that were used for testing. This will let you examine the state of the notebooks and catch errors
 * Make sure your answers are in cell output - not print statements (see the example below)
 ```
 my_answer = []
