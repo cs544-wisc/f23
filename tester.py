@@ -15,7 +15,8 @@ TEST_DIR = None
 INIT = None
 TESTS = OrderedDict()
 CLEANUP = None
-
+DEBUG = None
+GO_FOR_DEBUG = None
 
 # dataclass for storing test object info
 class _unit_test:
@@ -55,6 +56,11 @@ def test(points, timeout=None, desc=""):
 
     return wrapper
 
+# debug dir decorator
+def debug(debug_func):
+    global DEBUG
+    DEBUG = debug_func
+    return debug_func
 
 # cleanup decorator
 def cleanup(cleanup_func):
@@ -104,7 +110,9 @@ def run_tests():
         print("===== Final Score =====")
         print(json.dumps(results, indent=4))
         print("=======================")
-
+    # and results['score'] != results["full_score"]
+    if DEBUG and GO_FOR_DEBUG:
+        DEBUG()
     # cleanup code after all tests run
     shutil.rmtree(TMP_DIR)
     return results
@@ -119,7 +127,7 @@ def save_results(results):
 
 
 def tester_main():
-    global VERBOSE, TEST_DIR
+    global VERBOSE, TEST_DIR, GO_FOR_DEBUG
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -127,6 +135,7 @@ def tester_main():
     )
     parser.add_argument("-l", "--list", action="store_true", help="list all tests")
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-g", "--debug", action="store_true", help="create a debug directory with the files used while testing")
     args = parser.parse_args()
 
     if args.list:
@@ -134,7 +143,7 @@ def tester_main():
         return
 
     VERBOSE = args.verbose
-
+    GO_FOR_DEBUG = args.debug
     test_dir = args.dir
     if not os.path.isdir(test_dir):
         print("invalid path")
