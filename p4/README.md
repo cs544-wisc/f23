@@ -24,7 +24,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* None yet
+* October 18th: Added clarification on which port jupyterlab is being hosted
 
 ## Part 1: Deployment and Data Upload
 
@@ -71,7 +71,8 @@ complicated process/config.
 
 Connect to JupyterLab running in the `p4-nb` container, and create a
 notebook called `p4a.ipynb` in the "/nb" directory (we'll do some
-later work in another notebook, `p4b.ipynb`).
+later work in another notebook, `p4b.ipynb`). **Note that juypterlab is being
+hosted on port 5000 instead of 5440**
 
 #### Q1: how many live DataNodes are in the cluster?
 
