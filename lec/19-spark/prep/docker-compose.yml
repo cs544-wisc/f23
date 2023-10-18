@@ -3,6 +3,7 @@ services:
         image: spark-demo
         ports:
         - "127.0.0.1:5000:5000"
+        - "127.0.0.1:4040:4040"
         volumes:
         - "./nb:/nb"
         command: python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
@@ -24,3 +25,5 @@ services:
     spark-worker:
         image: spark-demo
         command: sh -c "/spark-3.5.0-bin-hadoop3/sbin/start-worker.sh spark://boss:7077 -c 1 -m 512M && sleep infinity"
+        deploy:
+                replicas: 2
