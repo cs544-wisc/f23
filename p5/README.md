@@ -187,7 +187,7 @@ should see if a windowing function can help.
 ## Part 4: Spark ML
 The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications.
 
-### I. Data Preparation
+#### Q9. Data Preparation
 The target variable, `action_taken`, is assumed to indicate the outcome of a loan application. And for this exercise, we will use the features `loan_amount`, `income`, `loan_type`, `interest_rate` for prediction. 
 
 First, as a prepartory step, fetch the features and target variable from the loans table into a new dataframe `df`. Cast the `loan_amount` and `income` columns to `double` type and drop the rows with missing values.
@@ -200,7 +200,7 @@ train, test = df.randomSplit([0.7, 0.3], seed=41)
 ```
 
 
-### II. Training and Evaluation
+#### Q10. Training and Evaluation
 Do some imports:
 
 ```python

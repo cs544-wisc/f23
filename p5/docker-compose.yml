@@ -1,0 +1,13 @@
+services:
+  main:
+    image: p5-main-image
+    ports:
+      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:4040:4040"
+    volumes:
+      - "./nb:/notebooks"
+
+  worker:
+    image: p5-worker-image
+    deploy:
+      replicas: 2
