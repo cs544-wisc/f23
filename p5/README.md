@@ -113,10 +113,10 @@ You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like th
 
 ## Part 2: Filter and Join
 
-#### Q2: how many banks contain the word "first" in their name?  Which ones contain "second"?
+#### Q2: how many banks contain the word "first" in their name?  Which one(s) contain "second"?
 
 Your filtering should be case insensative.  We're looking for a number
-for the first part and an actual listing for the second part.
+for the first question and a Python list for the second question.
 
 #### Q3: how many loan applications has the bank "University of Wisconsin Credit Union" received in the dataset?
 
@@ -185,28 +185,28 @@ Hint: if we were asking for the biggest in each county, you would use
 should see if a windowing function can help.
 
 ## Part 4: Spark ML
-The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications.
+The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications (approved or not). Recall that a loan is approve if action_taken is "Loan originated".
 
-#### Q9. Data Preparation
-The target variable, `action_taken`, is assumed to indicate the outcome of a loan application. And for this exercise, we will use the features `loan_amount`, `income`, `loan_type`, `interest_rate` for prediction. 
+Thus, our label is `approval`, indicating the whether of a loan application is approved or not (`1` for approved, `0` otherwise). And for this exercise, we will use the features `loan_amount`, `income`, `interest_rate` for prediction. 
 
-First, as a prepartory step, fetch the features and target variable from the loans table into a new dataframe `df`. Cast the `loan_amount` and `income` columns to `double` type and drop the rows with missing values.
+First, as a prepartory step, get the features and label from the loans table into a new dataframe `df`. Cast the `loan_amount` and `income` columns to `double` type and fill missing values by $0$.
 
 Then, we split `df` as follows and write both the train and test dataframes to parquet files:
 ```python
 # deterministic split
-train, test = df.randomSplit([0.7, 0.3], seed=41) 
+train, test = df.randomSplit([0.8, 0.2], seed=41) 
 
 ```
+#### Q9. How many approved loans in the `train` dataframes? 
 
 
-#### Q10. Training and Evaluation
+#### Q10. Follow the steps below to train a Decision Tree model and tell us the accuracy of the model on the `test` data.
 Do some imports:
 
 ```python
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.classification import DecisionTreeClassifier
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+from pyspark.ml.evaluation imposrt MulticlassClassificationEvaluator
 ```
 
 Read your train and test parquet files.
@@ -228,44 +228,35 @@ dt_classifier = DecisionTreeClassifier(??)
 Print the decision tree with `toDebugString` -- something like this:
 
 ```
-DecisionTreeClassificationModel: uid=DecisionTreeClassifier_018472239ed0, depth=5, numNodes=25, numClasses=9, numFeatures=4
-  If (feature 0 <= 170000.0)
-   If (feature 3 <= 4.495)
-    If (feature 1 <= 58.5)
-     If (feature 0 <= 120000.0)
-      Predict: 1.0
-     Else (feature 0 > 120000.0)
-      If (feature 3 <= 1.4325)
-       Predict: 6.0
-      Else (feature 3 > 1.4325)
+DecisionTreeClassificationModel: uid=DecisionTreeClassifier_0d7bc5ff6447, depth=5, numNodes=19, numClasses=2, numFeatures=3
+  If (feature 2 <= 0.495)
+   If (feature 1 <= 0.5)
+    If (feature 0 <= 400000.0)
+     Predict: 0.0
+    Else (feature 0 > 400000.0)
+     If (feature 1 <= -2.0)
+      Predict: 0.0
+     Else (feature 1 > -2.0)
+      If (feature 0 <= 1345000.0)
+       Predict: 0.0
+      Else (feature 0 > 1345000.0)
        Predict: 1.0
-    Else (feature 1 > 58.5)
+   Else (feature 1 > 0.5)
+    Predict: 0.0
+  Else (feature 2 > 0.495)
+   If (feature 1 <= 0.5)
+    If (feature 2 <= 2.496)
      Predict: 1.0
-   Else (feature 3 > 4.495)
-    If (feature 1 <= 86.5)
-     If (feature 2 <= 2.5)
-      Predict: 1.0
-     Else (feature 2 > 2.5)
-      If (feature 1 <= 78.5)
+    Else (feature 2 > 2.496)
+     If (feature 2 <= 3.8825000000000003)
+      If (feature 0 <= 1345000.0)
+       Predict: 0.0
+      Else (feature 0 > 1345000.0)
        Predict: 1.0
-      Else (feature 1 > 78.5)
-       Predict: 2.0
-    Else (feature 1 > 86.5)
-     Predict: 1.0
-  Else (feature 0 > 170000.0)
-   If (feature 3 <= 2.495)
+     Else (feature 2 > 3.8825000000000003)
+      Predict: 1.0
+   Else (feature 1 > 0.5)
     Predict: 1.0
-   Else (feature 3 > 2.495)
-    If (feature 1 <= 27.5)
-     If (feature 2 <= 1.5)
-      Predict: 1.0
-     Else (feature 2 > 1.5)
-      If (feature 3 <= 3.745)
-       Predict: 1.0
-      Else (feature 3 > 3.745)
-       Predict: 6.0
-    Else (feature 1 > 27.5)
-     Predict: 1.0
 ```
 
 Use the model to make predictions on the test data.  What is the
@@ -324,10 +315,9 @@ Hints:
 
 ## Submission
 
-We should be able to run the following on your submission to create the mini cluster:
+We should be able to run the following on your submission to directly create the mini cluster:
 
 ```
-docker build -t p5-image ./image 
 docker compose up -d
 ```
 
