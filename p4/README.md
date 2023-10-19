@@ -12,7 +12,8 @@ code to read the file.  When data is partially lost (due to a node
 failing), your code will recover as much data as possible from the
 damaged file.
 
-**Remember to switch to an e2-medium for this project:** [VM schedule](../projects.md#compute-setup).
+**Remember to switch to an e2-medium for this project:** [VM schedule](../projects.md#compute-setup). Note you can edit your existing instance to an e2-medium instead of deleting your old and creating a new vm. This [tutorial](https://cloud.google.com/compute/docs/instances/changing-machine-type-of-stopped-instance) should help you switch over.
+
 
 Learning objectives:
 * use the HDFS command line client to upload files
@@ -22,12 +23,23 @@ Learning objectives:
 
 Before starting, please review the [general project directions](../projects.md).
 
+
+
 ## Corrections/Clarifications
 
 * October 18th: Added clarification on which port jupyterlab is being hosted
+* Oct. 18: Added link to tutorial to change instance type
+* Oct. 18: added step to create `.gitignore` file to save students time
 
 ## Part 1: Deployment and Data Upload
 
+
+Before you begin, please run the below command in your p4 directory. This will stop git from trying to track csv files which will save you a lot of headaches (This step will not be graded - it is just to help you). 
+
+```
+echo "*.csv" >> .gitignore
+
+```
 #### Cluster
 
 For this project, you'll deploy a small cluster of containers, one
