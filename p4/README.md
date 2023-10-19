@@ -38,7 +38,6 @@ Before you begin, please run the below command in your p4 directory. This will s
 
 ```
 echo "*.csv" >> .gitignore
-
 ```
 #### Cluster
 
