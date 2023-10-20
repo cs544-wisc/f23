@@ -255,6 +255,12 @@ Live datanodes (1)
 
 You might need to wait a couple minutes and re-run this until the NameNode recognizes that the DataNode has died.
 
+
+**Important** - Add the below line to a cell below q8 but before q9. This is for the autograder. You do not need to run it.
+```
+import time
+time.sleep(30)
+```
 #### Q9: how are the blocks of single.csv distributed across the DataNode containers?
 
 This is the same as Q5, but you'll need to do a little extra work.
