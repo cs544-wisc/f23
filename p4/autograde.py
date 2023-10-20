@@ -9,7 +9,7 @@ import docker
 import pandas as pd
 import sys
 from tester import init, test, tester_main, debug
-
+import traceback
 # key=num, val=answer (as string)
 ANSWERS = {}
 
@@ -74,15 +74,6 @@ def docker_reset():
         result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
         if result.stdout.decode('utf-8').count("\n") > 1:
             subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
-        # # stop all running docker containers
-        # result = subprocess.run(["docker", "container", "ls", ], capture_output = True, check=True, shell=False)
-        # if result.stdout.decode('utf-8').count("\n") > 1:
-        #     subprocess.run(["docker stop $(docker ps -q)" ], check=True, shell=True)
-        
-        # # remove image to build it fresh
-        # result = subprocess.run(["docker", "compose", "down"], capture_output=True, check=True, shell=False)
-        # # TODO: update this
-        # result = subprocess.run(["docker", "rmi", "-f", "p4-image"], check=True, shell=False)
     except Exception as ex:
         pass
 
@@ -164,12 +155,17 @@ def run_student_code():
     print("\n" + "="*70)
     print("Running p4b.ipynb notebook... this will take a while")
     print("="*70)
-    cmd = (f"docker exec {container_name} sh -c '" +
-                "export CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob` && " +
-                "python3 -m nbconvert --execute --to notebook " +
-                "nb/p4b.ipynb --output tester-p4b.ipynb'")
-    print(cmd)
-    check_output(cmd, shell=True)
+    try:
+        cmd = (f"docker exec {container_name} sh -c '" +
+                    "export CLASSPATH=`$HADOOP_HOME/bin/hdfs classpath --glob` && " +
+                    "python3 -m nbconvert --execute --to notebook " +
+                    "nb/p4b.ipynb --output tester-p4b.ipynb'")
+        print(cmd)
+        check_output(cmd, shell=True)
+    except Exception as e:
+        print("An exception occurred while executing p4b.ipynb:", e)
+        traceback.print_exc()
+
 
     # make all notebooks writable (if only root can, it's a pain to delete/overwrite later)
     cmd = (f"docker exec {container_name} sh -c 'chmod o+w nb/*.ipynb'")
@@ -239,11 +235,11 @@ def diagnostic_checks():
 def create_debug_dir():
     file_dir = os.path.abspath(__file__)
     tester_dir = os.path.dirname(file_dir)
-    
+    print("tester_dir: ", file_dir)
     
     target = f"{tester_dir}/notebooks_from_test/"
-    print("Creating debug direcrory: ", target)
-    check_output(f"mkdir -p {target} && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
+    print("target: ", target)
+    check_output(f"mkdir {target} && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
 
 @init
 def init(verbose = False):
