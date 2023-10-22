@@ -4,15 +4,14 @@
 
 ## Overview
 
-In this project, we'll use Spark to analyze loan applications in WI.
+In P5, we'll use Spark to analyze loan applications in WI.
 You'll load your data to Hive tables and views so you can easily query
 them.  The big table (loans) has many IDs in columns; you'll need to
-join these against other tables/views to determine the meaning of
-these IDs.  In addition to your analysis, you'll study the performance
-impact of caching and bucketing.
+join these against other tables or views to determine the meaning of
+these IDs.  In addition, you'll practice training a Decision Tree model to predict loan approval.
 
-**Important:** you'll answer ten questions in this project.  Paste
-  each question and it's number (e.g., "# Q1: ...") as a comment in your
+**Important:** you'll answer $10$ questions in P5.  Paste
+  each question and it's number (e.g., "#Q1: ...") as a comment in your
   notebook prior to each answer so we can easily search your notebook
   and give you credit for your answers.
 
@@ -21,11 +20,12 @@ Learning objectives:
 * write queries that use filtering, joining, grouping, and windowing
 * interpret Spark query explanations
 * optimize queries with bucketing and caching
+* train a Decision Tree model
 
-Before starting, please review the [general project directions](../projects.md).
+Before starting, please revisit the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
-
+Oct 21: add Q9 and Q10 (Spark ML); an overall pass \
 Oct 15: remove ambiguity in some questions like Q3; remove Q9 and Q10 (Caching)
 <!-- * Mar 21: removed "agency" views to create
 * Mar 25: clarified that Q8 is for top 10; this is over all loans (not one bank)
@@ -34,10 +34,11 @@ Oct 15: remove ambiguity in some questions like Q3; remove Q9 and Q10 (Caching)
 
 ## Machine Setup
 
-~4 GB is barely enough for this project. Brefore you start, take a moment to enable a 1
-GB swap file to supplement.  A swap file exists on storage, but acts
-as extra memory.  Note this has performance implications as storage is
-much slower than RAM.
+~4 GB is barely enough for P5. Brefore you start, take a moment to enable a 1
+GB swap file to supplement.  A swap file is on storage, but acts
+as extra memory. This has performance implications as storage is
+much slower than RAM (as what we have studied in class).  
+
 
 ```
 # https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-22-04
@@ -48,14 +49,14 @@ sudo swapon /swapfile
 # htop should show 1 GB of swap beneath memory
 ```
 
+
 ## Part 1: Data Setup
 
 Setup an environment with three containers, running the following:
 1. HDFS Namenode and Datanode on fresh file system; Spark boss; JupyterLab
-2. Spark worker
-2. Spark worker
+2. two Spark workers
 
-For inspiration, here are some files that could help: [Container Setup Files](./containers.md)
+Here are some suggested starter files: [Container Setup Files](./containers.md)
 
 Create a `p5.ipynb` notebook and create a session.  We'll enable Hive, with metadata stored on HDFS:
 
@@ -69,7 +70,7 @@ spark = (SparkSession.builder.appName("cs544")
          .getOrCreate())
 ```
 
-Download these files for this project:
+Download these files (to be used throughout P5):
 * https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip
 * https://pages.cs.wisc.edu/~harter/cs544/data/arid2017_to_lei_xref_csv.zip
 * https://pages.cs.wisc.edu/~harter/cs544/data/code_sheets.zip
@@ -81,10 +82,13 @@ your work in `p5.ipynb`.  Register or load the data into Spark.
 Requirements:
 * let Spark infer the schema
 * use Spark options/functions so that you can run the data setup code more than one, and it will simply replace previous data
-* **code_sheets.zip:** create these temporary views corresponding to the CSVs by the same name: "ethnicity", "race", "sex", "states", "counties", "tracts", "action_taken", "denial_reason", "loan_type", "loan_purpose", "preapproval", "property_type"
-* **arid2017_to_lei_xref_csv.zip:** load the data to a table named "banks"
-* **hdma-wi-2021.zip:** load the data to a table named "loans"
-* the "loans" table should be divide into 8 buckets by the `county_code` column
+* **code_sheets.zip:** create these temporary views corresponding to the CSVs by their same names: 
+```python
+["ethnicity", "race", "sex", "states", "counties", "tracts", "action_taken", "denial_reason", "loan_type", "loan_purpose", "preapproval", "property_type"]
+```
+* **arid2017_to_lei_xref_csv.zip:** load the data to a table named `banks`
+* **hdma-wi-2021.zip:** load the data to a table named `loans`
+* the "loans" table should be divide into $8$ buckets by the `county_code` column
 
 #### Q1: what tables are in our warehouse?
 
@@ -113,25 +117,25 @@ You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like th
 
 ## Part 2: Filter and Join
 
-#### Q2: how many banks contain the word "first" in their name?  Which one(s) contain "second"?
+#### Q2: How many banks contain the word "first" in their name?  Which one(s) contain "second"?
 
 Your filtering should be case insensative.  We're looking for a number
 for the first question and a Python list for the second question.
 
-#### Q3: how many loan applications has the bank "University of Wisconsin Credit Union" received in the dataset?
+#### Q3: How many loan applications has the bank "University of Wisconsin Credit Union" received in history in this dataset?
 
 Use an `INNER JOIN` between `banks` and `loans` to answer this
-question.  `lei` in loans lets you identify the bank.  Filter on
+question.  `lei` in `loans` lets you identify the bank.  Filter on
 `respondent_name` (do NOT hardcode the LEI).
 
-#### Q4: what does `results.explain("formatted")` tell us about Spark's query plan for Q3?
+#### Q4: What does `results.explain("formatted")` tell us about Spark's query plan for Q3?
 
 Show `results.explain("formatted")` and write a comment making observations about the following:
-1. which table is sent to every executor via a `BroadcastExchange` operation?
-2. on which tables is "is not null" filtering added by the optimizer?
-3. does the plan involve `HashAggregate`s (depending on how you write the query, it may or may not)?  If so, which ones?
+1. Which table is sent to every executor via a `BroadcastExchange` operation?
+2. On which tables is "is not null" filtering added by the optimizer?
+3. Does the plan involve `HashAggregate`s (depending on how you write the query, it may or may not)?  If so, which ones?
 
-#### Q5: what are the top 10 biggest loans (in terms of `loan_amount`) that were approved by "University of Wisconsin Credit Union"?
+#### Q5: what are the top $10$ biggest loans (in terms of `loan_amount`) that were approved by "University of Wisconsin Credit Union"?
 
 A loan is approved if `action_taken` is "Loan originated".  Your
 answer should have the following columns: census_tract, county,
@@ -150,13 +154,13 @@ the example).
 Joining `counties` will be a very tricky.  Tips:
 
 * sometimes multiple rows in `counties` have the same `STATE, COUNTY, NAME` combination; eliminate duplicates before joining
-* `county_code` in `loans` is actually the state and county codes concatenated together whereas `counties` has these as separate columns.  For example, `55025` is the `county_code` for Dane county in loans, but this will show up as STATE=55 and COUNTY=25 in the `counties` view.  Be careful because counties have 3-digit codes (like `025`) but the `counties` view doesn't have leading zeros.
+* `county_code` in `loans` is actually the state and county codes concatenated together whereas `counties` has these as separate columns.  For example, `55025` is the `county_code` for Dane county in loans, but this will show up as `STATE=55` and `COUNTY=25` in the `counties` view.  Be careful because counties have 3-digit codes (like `025`) but the `counties` view doesn't have leading zeros. (Hint: you can use `lpad` to add leading zeros to a string column)
 
 ## Part 3: GROUPY BY and Windowing
 
 #### Q6: when computing a MEAN aggregate per group of loans, under what situation (when) do we require network I/O between the `partial_mean` and `mean` operations?
 
-Write some simple `GROUP BY` queries on `loans` and call .explain().  Try grouping by the `county_code`. Then try grouping by the `lei` columns.
+Write some simple `GROUP BY` queries on `loans` and call `.explain()`.  Try grouping by the `county_code`. Then try grouping by the `lei` columns.
 
 If a network transfer (network I/O) is necessary for one query but not the other,
 write a comment explaining why.  You might want to look back at how
@@ -185,9 +189,9 @@ Hint: if we were asking for the biggest in each county, you would use
 should see if a windowing function can help.
 
 ## Part 4: Spark ML
-The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications (approved or not). Recall that a loan is approve if action_taken is "Loan originated".
+The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications (approved or not). Recall that a loan is approve if `action_taken` is "Loan originated".
 
-Thus, our label is `approval`, indicating the whether of a loan application is approved or not (`1` for approved, `0` otherwise). And for this exercise, we will use the features `loan_amount`, `income`, `interest_rate` for prediction. 
+We call our label `approval`, indicating the whether of a loan application is approved or not (`1` for approved, `0` otherwise). And for this exercise, we will use the features `loan_amount`, `income`, `interest_rate` in `loans` table for prediction.
 
 First, as a prepartory step, get the features and label from the loans table into a new dataframe `df`. Cast the `loan_amount` and `income` columns to `double` type and fill missing values by $0$.
 
@@ -197,11 +201,12 @@ Then, we split `df` as follows and write both the train and test dataframes to p
 train, test = df.randomSplit([0.8, 0.2], seed=41) 
 
 ```
-#### Q9. How many approved loans in the `train` dataframes? 
+#### Q9. How many loans are approved (`approval = 1`) in the `train` dataframes? 
+Answer with a single number.
 
 
 #### Q10. Follow the steps below to train a Decision Tree model and tell us the accuracy of the model on the `test` data.
-Do some imports:
+Make some imports:
 
 ```python
 from pyspark.ml.feature import VectorAssembler
@@ -218,7 +223,7 @@ single column.
 assembler = VectorAssembler(??) 
 ```
 
-Train a `DecisionTreeClassifier` of max depth 5 on your training data to predict
+Train a `DecisionTreeClassifier` of max depth $5$ on your training data to predict
 `action_taken` based on the features. 
 
 ```python

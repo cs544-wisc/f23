@@ -1,6 +1,7 @@
 services:
   main:
-    image: p5-main-image
+    build: .
+    command: sh /main.sh
     ports:
       - "127.0.0.1:5000:5000"
       - "127.0.0.1:4040:4040"
@@ -8,6 +9,7 @@ services:
       - "./nb:/notebooks"
 
   worker:
-    image: p5-worker-image
+    build: .
+    command: sh /worker.sh
     deploy:
       replicas: 2
