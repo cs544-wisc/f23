@@ -1,15 +1,24 @@
 services:
-  main:
-    build: .
-    command: sh /main.sh
-    ports:
-      - "127.0.0.1:5000:5000"
-      - "127.0.0.1:4040:4040"
-    volumes:
-      - "./nb:/notebooks"
+    nb:
+        image: p5-nb
+        ports:
+        - "127.0.0.1:5000:5000"
+        - "127.0.0.1:4040:4040"
+        volumes:
+        - "./nb:/nb"
 
-  worker:
-    build: .
-    command: sh /worker.sh
-    deploy:
-      replicas: 2
+    nn:
+        image: p5-nn
+        hostname: nn
+
+    dn:
+        image: p5-dn
+
+    spark-boss:
+        image: p5-boss
+        hostname: boss
+
+    spark-worker:
+        image: p5-worker
+        deploy:
+                replicas: 2
