@@ -14,6 +14,7 @@ damaged file.
 
 **Remember to switch to an e2-medium for this project:** [VM schedule](../projects.md#compute-setup). Note you can edit your existing instance to an e2-medium instead of deleting your old and creating a new vm. This [tutorial](https://cloud.google.com/compute/docs/instances/changing-machine-type-of-stopped-instance) should help you switch over.
 
+If you switched machines, remember to reinstall Docker and also to enable Docker to be run without sudo. Refer to P1 for instructions. 
 
 Learning objectives:
 * use the HDFS command line client to upload files
