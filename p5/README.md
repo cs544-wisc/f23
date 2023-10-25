@@ -224,7 +224,7 @@ HDFS.  Don't forget about headers and schema inference!
 
 #### Q4: what tables are in our warehouse?
 
-You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like this:
+You can use `spark.sql("SHOW TABLES").show()` to see your tables in the warehouse as follows. 
 
 ```
 +---------+-------------+-----------+
@@ -246,10 +246,29 @@ You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like th
 |         |       tracts|       true|
 +---------+-------------+-----------+
 ```
+Answer with a Python dict looks like this
+```python
+{'banks': False, 
+ 'loans': False, 
+ 'action_taken': True, 
+ 'counties': True, 
+ 'denial_reason': True, 
+ 'ethnicity': True, 
+ 'loan_purpose': True, 
+ 'loan_type': True, 
+ 'preapproval': True, 
+ 'property_type': True, 
+ 'race': True, 
+ 'sex': True, 
+ 'states': True, 
+ 'tracts': True
+ }
+```
 
-#### Q5: how many loan applications has the bank "University of Wisconsin Credit Union" received in history in this dataset?
 
-Use an `INNER JOIN` between `banks` and `loans` to answer this
+#### Q5: how many loan applications has the bank "University of Wisconsin Credit Union" received in year 2020 in this dataset?
+
+Use an `INNER JOIN` between `banks` (`banks.lei_2020`) and `loans` (`loans.lei`) to answer this
 question.  `lei` in `loans` lets you identify the bank.  Filter on
 `respondent_name` (do NOT hardcode the LEI).
 
@@ -361,4 +380,19 @@ notebook, and run it.
 
 ## Testing
 
-TODO: ...
+
+After copying `../tester.py`, `../nbutils.py`, and `autograde.py` to
+your repository (where your `nb/` directory is located), you can check
+your notebook answers with this command:
+
+```sh
+python3 autograde.py
+```
+
+For the autograder to work, for each question, please include a line of comment at the beginning of code cell that outputs the answer. For example, the code cell for question 7 should look like
+```python
+#q7
+...
+```
+
+Of course, the checker only looks at the answers, not how you got them, so there may be further deductions (especially in the case of hardcoding answers). Moreover, Q6 and Q8 are manually graded, so the autograder will not give you any feedback on them.
