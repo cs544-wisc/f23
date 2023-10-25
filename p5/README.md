@@ -4,35 +4,34 @@
 
 ## Overview
 
-In P5, we'll use Spark to analyze loan applications in WI.
-You'll load your data to Hive tables and views so you can easily query
-them.  The big table (loans) has many IDs in columns; you'll need to
-join these against other tables or views to determine the meaning of
-these IDs.  In addition, you'll practice training a Decision Tree model to predict loan approval.
+In P5, we'll use Spark to analyze loan applications in WI.  You'll
+load your data to Hive tables and views so you can easily query them.
+The big table (loans) has many IDs in columns; you'll need to join
+these against other tables or views to determine the meaning of these
+IDs.  In addition, you'll practice training a Decision Tree model to
+predict loan approval.
 
-**Important:** you'll answer $10$ questions in P5.  Paste
-  each question and it's number (e.g., "#Q1: ...") as a comment in your
+**Important:** you'll answer 10 questions in P5.  Write
+  each question and it's number (e.g., "#q1: ...") as a comment in your
   notebook prior to each answer so we can easily search your notebook
   and give you credit for your answers.
 
 Learning objectives:
-* load data to Hive tables and views
-* write queries that use filtering, joining, grouping, and windowing
-* interpret Spark query explanations
+
+* use Spark's RDD, DataFrame, and SQL interfaces to answer question about data
+* load data into Hive for querying with Spark
 * optimize queries with bucketing and caching
 * train a Decision Tree model
 
 Before starting, please revisit the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
-Oct 21: add Q9 and Q10 (Spark ML); an overall pass \
-Oct 15: remove ambiguity in some questions like Q3; remove Q9 and Q10 (Caching)
-<!-- * Mar 21: removed "agency" views to create
-* Mar 25: clarified that Q8 is for top 10; this is over all loans (not one bank)
-* Mar 29: made q4 more flexible to accomodate different approaches
-* Mar 30: Q6 is asking under what situation (when) you need Network I/O. If one of your queries does not need Network I/O explain why. -->
 
-## Machine Setup
+* none yet
+
+## Cluster Setup
+
+### Virtual Machine
 
 ~4 GB is barely enough for P5. Brefore you start, take a moment to enable a 1
 GB swap file to supplement.  A swap file is on storage, but acts
@@ -49,48 +48,181 @@ sudo swapon /swapfile
 # htop should show 1 GB of swap beneath memory
 ```
 
+### Containers
 
-## Part 1: Data Setup
+For this project, you'll deploy a small cluster of containers:
 
-Setup an environment with three containers, running the following:
-1. HDFS Namenode and Datanode on fresh file system; Spark boss; JupyterLab
-2. two Spark workers
+* `p5-nb` (1 Jupyter container)
+* `p5-nn` (1 NameNode container)
+* `p5-dn` (1 DataNode container)
+* `p5-boss` (1 Spark boss container)
+* `p5-worker` (2 Spark worker containers)
 
-Here are some suggested starter files: [Container Setup Files](./containers.md)
+You should be able to build all these images like this:
 
-Create a `p5.ipynb` notebook and create a session.  We'll enable Hive, with metadata stored on HDFS:
+```
+docker build . -f p5-base.Dockerfile -t p5-base
+docker build . -f notebook.Dockerfile -t p5-nb
+docker build . -f namenode.Dockerfile -t p5-nn
+docker build . -f datanode.Dockerfile -t p5-dn
+docker build . -f boss.Dockerfile -t p5-boss
+docker build . -f worker.Dockerfile -t p5-worker
+```
+
+We provide most of these, but you'll need to write `boss.Dockerfile`
+and `worker.Dockerfile` yourself -- these should both use `p5-base` as
+a base Docker image.
+
+The commands for these are `start-master.sh` and `start-worker.sh
+spark://boss:7077 -c 1 -m 512M` respectively (you'll need to specify
+the full path to these .sh scripts).  These scripts launch a
+boss/worker in the background then exit -- make sure your container
+doesn't exist when the script does.
+
+You should then be able to use the `docker-compose.yml` we proved to
+run `docker compose up -d`.  Wait a bit and make sure all containers
+are still running.  If some are starting up then exiting, troubleshoot
+the reason before proceeding.
+
+## Data Setup
+
+### Virtual Machine
+
+The Docker Compose setup maps a	`nb` directory into your Jupyter
+container.  Within `nb`, you need to create a subdirectory called
+`data` and fill it with some CSVs you'll use for the project.
+
+You can	run the	following on your VM (not in any container):
+
+```
+wget https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip
+wget https://pages.cs.wisc.edu/~harter/cs544/data/arid2017_to_lei_xref_csv.zip
+wget https://pages.cs.wisc.edu/~harter/cs544/data/code_sheets.zip
+mkdir -p nb/data
+unzip -o hdma-wi-2021.zip -d nb/data
+unzip -o arid2017_to_lei_xref_csv.zip -d nb/data
+unzip -o code_sheets.zip -d nb/data
+```
+
+You'll probably	need to	change some permissions	(`chmod`) or run as
+root (`sudo su`) to be able to do this.
+
+### Jupyter Container
+
+Connect to JupyterLab inside your container, and create a notebook
+called `p5.ipynb`.  Put your name(s) in a comment at the top.
+
+Run a shell command (`hdfs dfs -D dfs.replication=1 -cp -f data/*.csv
+hdfs://nn:9000/` in a cell to upload the CSVs from the local file
+system to HDFS).
+
+## Part 1: Filtering: RDDs, DataFrames, and Spark
+
+Inside your `p5.ipynb` notebook, create a Spark session (note we're enabling
+Hive on HDFS):
 
 ```python
 from pyspark.sql import SparkSession
 spark = (SparkSession.builder.appName("cs544")
-         .master("spark://main:7077")
+         .master("spark://boss:7077")
          .config("spark.executor.memory", "512M")
-         .config("spark.sql.warehouse.dir", "hdfs://main:9000/user/hive/warehouse")
+         .config("spark.sql.warehouse.dir", "hdfs://nn:9000/user/hive/warehouse")
          .enableHiveSupport()
          .getOrCreate())
 ```
 
-Download these files (to be used throughout P5):
-* https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.zip
-* https://pages.cs.wisc.edu/~harter/cs544/data/arid2017_to_lei_xref_csv.zip
-* https://pages.cs.wisc.edu/~harter/cs544/data/code_sheets.zip
+#### Q1: how many banks contain the word "first" in their name, ignoring case?  Use an **RDD** to answer.
 
-Each zip contains one or more CSV files.  Upload each CSV to HDFS.
-You can use shell commands and/or Python code, but be sure to show
-your work in `p5.ipynb`.  Register or load the data into Spark.
+The `arid2017_to_lei_xref_csv.csv` contains the banks, so you can use the following to read it to a DataFrame.
 
-Requirements:
-* let Spark infer the schema
-* use Spark options/functions so that you can run the data setup code more than one, and it will simply replace previous data
-* **code_sheets.zip:** create these temporary views corresponding to the CSVs by their same names: 
 ```python
-["ethnicity", "race", "sex", "states", "counties", "tracts", "action_taken", "denial_reason", "loan_type", "loan_purpose", "preapproval", "property_type"]
+# TODO: modify to treat the first row as a header
+# TODO: modify to infer the schema
+banks_df = spark.read.csv("hdfs://nn:9000/arid2017_to_lei_xref_csv.csv")
 ```
-* **arid2017_to_lei_xref_csv.zip:** load the data to a table named `banks`
-* **hdma-wi-2021.zip:** load the data to a table named `loans`
-* the "loans" table should be divide into $8$ buckets by the `county_code` column
 
-#### Q1: what tables are in our warehouse?
+From this DataFrame, you can use `banks_df.rdd` to get the underlying
+RDD you need for this question.
+
+Use a `filter` transformation (that takes a Python lambda) with a
+`count` action to get the answer.
+
+As an practice, you could run this:
+
+```python
+rows = df.rdd.take(3)
+```
+
+The try to extract the name from one of the rows with a little Python
+code.  This will help you determine how to write your lambda (which
+will take a `Row` and return a boolean).
+
+Use the some format as previous projects for all your notebook answers
+(last line of a cell contains an expression giving the answer, and the
+cell starts with a "#q1" comment, or similar).
+
+#### Q2: how many banks contain the word "first" in their name, ignoring case?  Use a **DataFrame** to answer.
+
+This is the same as Q1, but now you must operate on `banks_df` itself,
+without directly accessing the underlying `RDD`.
+
+DataFrames also have `filter` transformations and `count` actions, but
+`filter` takes a string containing a condition.  The condition uses
+the same syntax as a condition in SQL, so these resources may help:
+
+* https://www.w3schools.com/sql/sql_like.asp
+* https://www.w3schools.com/sql/func_sqlserver_lower.asp
+
+#### Q3: how many banks contain the word "first" in their name, ignoring case?  Use **Spark SQL** to answer.
+
+To write a SQL query to answer this, we first need to load into a Hive
+table.  You can do so with this:
+
+```python
+banks_df.write.saveAsTable("banks", mode="overwrite")
+```
+
+Now you can use `spark.sql(????)` with a SQL query you write to get
+the answer.  This call will return the results as a Spark DataFrame --
+you'll need to do a little extra Python work to get this out as a
+single int for your answer.
+
+## Part 2: Hive Data Warehouse
+
+#### `loans` table
+
+You have already added a `banks` table to Hive (using the command we
+shared with you).
+
+Now, write similar code `hdma-wi-2021.csv` into a table called
+`loans`.
+
+Note that `writeTable` will produce one or more Parquet files in
+`hdfs://nn:9000/user/hive/warehouse` (look back at how you created
+your Spark session to see this).
+
+Use
+[`bucketBy`](https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.DataFrameWriter.bucketBy.html)
+with your `writeTable` call to create 8 buckets on column
+`county_code`.  This means that your written data will be broken into
+8 buckets/groups, and all the rows will the same county will be in the
+same bucket/group.  This will make some queries faster (for example,
+if you `GROUP BY` on `county_code`, Spark might be able to avoid
+shuffling/exchanging data across partitions/machines).
+
+#### Other views
+
+Use `createOrReplaceTempView` to create Hive views for each of the names in this list:
+
+```python
+["ethnicity", "race", "sex", "states", "counties", "tracts", "action_taken",
+ "denial_reason", "loan_type", "loan_purpose", "preapproval", "property_type"]
+```
+
+The contents should correspond to the CSV files of the same name in
+HDFS.  Don't forget about headers and schema inference!
+
+#### Q4: what tables are in our warehouse?
 
 You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like this:
 
@@ -115,60 +247,39 @@ You can use `spark.sql("SHOW TABLES").show()` to answer.  It should look like th
 +---------+-------------+-----------+
 ```
 
-## Part 2: Filter and Join
-
-#### Q2: How many banks contain the word "first" in their name?  Which one(s) contain "second"?
-
-Your filtering should be case insensative.  We're looking for a number
-for the first question and a Python list for the second question.
-
-#### Q3: How many loan applications has the bank "University of Wisconsin Credit Union" received in history in this dataset?
+#### Q5: how many loan applications has the bank "University of Wisconsin Credit Union" received in history in this dataset?
 
 Use an `INNER JOIN` between `banks` and `loans` to answer this
 question.  `lei` in `loans` lets you identify the bank.  Filter on
 `respondent_name` (do NOT hardcode the LEI).
 
-#### Q4: What does `results.explain("formatted")` tell us about Spark's query plan for Q3?
+#### Q6: what does `.explain("formatted")` tell us about how Spark executes Q5?
 
-Show `results.explain("formatted")` and write a comment making observations about the following:
+Show the output, then write comments (which we will manually grade) explaining the following:
+
 1. Which table is sent to every executor via a `BroadcastExchange` operation?
-2. On which tables is "is not null" filtering added by the optimizer?
-3. Does the plan involve `HashAggregate`s (depending on how you write the query, it may or may not)?  If so, which ones?
+2. Does the plan involve `HashAggregate`s (depending on how you write the query, it may or may not)?  If so, which ones?
 
-#### Q5: what are the top $10$ biggest loans (in terms of `loan_amount`) that were approved by "University of Wisconsin Credit Union"?
-
-A loan is approved if `action_taken` is "Loan originated".  Your
-answer should have the following columns: census_tract, county,
-loan_purpose, derived_dwelling_category, thousands, interest_rate,
-years, action_taken
-
-Join with the appropriate views to get the values for these columns.
-It should look like the following:
-
-<img src="q5.png">
-
-Use `LEFT JOIN`s so that we don't ignore loans with missing values
-(for example, you can see some `None`s in the `loan_purpose` column of
-the example).
-
-Joining `counties` will be a very tricky.  Tips:
-
-* sometimes multiple rows in `counties` have the same `STATE, COUNTY, NAME` combination; eliminate duplicates before joining
-* `county_code` in `loans` is actually the state and county codes concatenated together whereas `counties` has these as separate columns.  For example, `55025` is the `county_code` for Dane county in loans, but this will show up as `STATE=55` and `COUNTY=25` in the `counties` view.  Be careful because counties have 3-digit codes (like `025`) but the `counties` view doesn't have leading zeros. (Hint: you can use `lpad` to add leading zeros to a string column)
-
-## Part 3: GROUPY BY and Windowing
-
-#### Q6: when computing a MEAN aggregate per group of loans, under what situation (when) do we require network I/O between the `partial_mean` and `mean` operations?
-
-Write some simple `GROUP BY` queries on `loans` and call `.explain()`.  Try grouping by the `county_code`. Then try grouping by the `lei` columns.
-
-If a network transfer (network I/O) is necessary for one query but not the other,
-write a comment explaining why.  You might want to look back at how
-you loaded the data to a Hive table earlier.
+## Part 3: Grouping Rows
 
 #### Q7: what are the average interest rates for Wells Fargo applications for the ten counties where Wells Fargo receives the most applications?
 
-Answer with a bar plot like this:
+Answer with a Python `dict` that looks like this:
+
+```python
+{'Milwaukee': 3.1173465727097907,
+ 'Waukesha': 2.8758225602027756,
+ 'Washington': 2.851009389671362,
+ 'Dane': 2.890674955595027,
+ 'Brown': 3.010949119373777,
+ 'Racine': 3.099783715012723,
+ 'Outagamie': 2.979661835748792,
+ 'Winnebago': 3.0284761904761908,
+ 'Ozaukee': 2.8673765432098772,
+ 'Sheboygan': 2.995511111111111}
+```
+
+The cell following your answer should have a plot that looks like this:
 
 <img src="q7.png" width=500>
 
@@ -176,149 +287,68 @@ The bars are sorted by the number of applications in each county (for
 example, most applications are in Milwaukee, Waukesha is second most,
 etc).
 
-#### Q8: what is the second biggest loan application amount in each county?  (answer for top 10 counties).
+#### Q8: when computing a MEAN aggregate per group of loans, under what situation (when) do we require network I/O between the `partial_mean` and `mean` operations?
 
-Note this this is computed over all loans, not just for one bank.
+Write some simple `GROUP BY` queries on `loans` and call `.explain()`.
+Try grouping by the `county_code`. Then try grouping by the `lei`
+column.
 
-Answer with a plot like the following:
+If a network transfer (network I/O) is necessary for one query but not the other,
+write a comment explaining why.  You might want to look back at how
+you loaded the data to a Hive table earlier.
 
-<img src="q8.png" width=500>
+Write your answer as a Python comment.
 
-Hint: if we were asking for the biggest in each county, you would use
-`GROUP BY` and `MAX`.  We're asking for the second biggest, so you
-should see if a windowing function can help.
+## Part 4: Machine Learning
 
-## Part 4: Spark ML
-The objective of Part 4 is to use the given loan dataset to train a Decision Tree model that can predict outcomes of loan applications (approved or not). Recall that a loan is approve if `action_taken` is "Loan originated".
+The objective of Part 4 is to use the given loan dataset to train a
+Decision Tree model that can predict outcomes of loan applications
+(approved or not). Recall that a loan is approve if `action_taken` is
+"Loan originated".
 
-We call our label `approval`, indicating the whether of a loan application is approved or not (`1` for approved, `0` otherwise). And for this exercise, we will use the features `loan_amount`, `income`, `interest_rate` in `loans` table for prediction.
+We call our label `approval`, indicating the whether of a loan
+application is approved or not (`1` for approved, `0` otherwise). And
+for this exercise, we will use the features `loan_amount`, `income`,
+`interest_rate` in `loans` table for prediction.
 
-First, as a prepartory step, get the features and label from the loans table into a new dataframe `df`. Cast the `loan_amount` and `income` columns to `double` type and fill missing values by $0$.
+First, as a prepartory step, get the features and label from the loans
+table into a new dataframe `df`. Cast the `loan_amount` and `income`
+columns to `double` type and fill missing values by 0.0.
 
-Then, we split `df` as follows and write both the train and test dataframes to parquet files:
+Then split `df` as follows:
+
 ```python
 # deterministic split
 train, test = df.randomSplit([0.8, 0.2], seed=41) 
-
 ```
-#### Q9. How many loans are approved (`approval = 1`) in the `train` dataframes? 
+
+Cache the `train` DataFrame.
+
+#### Q9. How many loans are approved (`approval = 1`) in the `train` DataFrame?
 Answer with a single number.
 
+#### Q10. What is the accuracy of the decision tree classifier of depth 5 on the test dataset?
 
-#### Q10. Follow the steps below to train a Decision Tree model and tell us the accuracy of the model on the `test` data.
-Make some imports:
+You'll need to train a decision tree first.  Start with some imports:
 
 ```python
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.classification import DecisionTreeClassifier
-from pyspark.ml.evaluation imposrt MulticlassClassificationEvaluator
 ```
 
-Read your train and test parquet files.
+Use the VectorAssembler to combine the feature columns `loan_amount`,
+`income`, `loan_type`, `interest_rate` into a single column.
 
-Use the VectorAssembler to combine the feature columns `loan_amount`, `income`, `loan_type`, `interest_rate` into a
-single column.
-
-```python
-assembler = VectorAssembler(??) 
-```
-
-Train a `DecisionTreeClassifier` of max depth $5$ on your training data to predict
-`action_taken` based on the features. 
-
-```python
-dt_classifier = DecisionTreeClassifier(??)
-```
-
-Print the decision tree with `toDebugString` -- something like this:
-
-```
-DecisionTreeClassificationModel: uid=DecisionTreeClassifier_0d7bc5ff6447, depth=5, numNodes=19, numClasses=2, numFeatures=3
-  If (feature 2 <= 0.495)
-   If (feature 1 <= 0.5)
-    If (feature 0 <= 400000.0)
-     Predict: 0.0
-    Else (feature 0 > 400000.0)
-     If (feature 1 <= -2.0)
-      Predict: 0.0
-     Else (feature 1 > -2.0)
-      If (feature 0 <= 1345000.0)
-       Predict: 0.0
-      Else (feature 0 > 1345000.0)
-       Predict: 1.0
-   Else (feature 1 > 0.5)
-    Predict: 0.0
-  Else (feature 2 > 0.495)
-   If (feature 1 <= 0.5)
-    If (feature 2 <= 2.496)
-     Predict: 1.0
-    Else (feature 2 > 2.496)
-     If (feature 2 <= 3.8825000000000003)
-      If (feature 0 <= 1345000.0)
-       Predict: 0.0
-      Else (feature 0 > 1345000.0)
-       Predict: 1.0
-     Else (feature 2 > 3.8825000000000003)
-      Predict: 1.0
-   Else (feature 1 > 0.5)
-    Predict: 1.0
-```
+Train a `DecisionTreeClassifier` of max depth 5 (and default arguments
+for other parameters) on your training data to predict `approved`
+based on the features.
 
 Use the model to make predictions on the test data.  What is the
-*accuracy* (percent of times the model is correct)? 
-
-```python
-predictions = dt_model.transform(test)
-
-evaluator = MulticlassClassificationEvaluator(??)
-accuracy = evaluator.evaluate(predictions)
-print(f"accuracy = {accuracy*100:.2f}%")
-```
-
-
-<!-- remove Caching  -->
-<!-- ####################################### -->
-<!-- ## Part 4: Caching
-
-Create a DataFrame from the following query:
-
-```sql
-SELECT interest_rate
-FROM banks
-INNER JOIN loans
-ON banks.lei_2020 = loans.lei 
-WHERE banks.respondent_name = 'Wells Fargo Bank, National Association'
-```
-
-#### Q9: what is the cost of caching and the impact on subsequent queries?
-
-Write a loop that calls `.count()` on your DataFrame ten times.
-Measure the latency in milliseconds each time.  On the 5th time, cache
-the DataFrame.
-
-Answer with a scatter or line plot showing the latency of each query
-execution tha distinguishes between caching or not.  Here's one way to
-visualize it:
-
-<img src="q9.png" width=500>
-
-#### Q10: what is the impact of caching a single partition on load balance?
-
-Repartition your DataFrame to have 1 partition and cache it again.
-Write another loop that calls `.count()` ten times.
-
-After each query, use Spark's REST API to check how many tasks each executor has completed: https://spark.apache.org/docs/latest/monitoring.html#rest-api
-
-Make a plot like the following to show how much work each has completed:
-
-<img src="q10.png" width=500>
-
-Hints:
-* you can use `http://localhost:4040/api/v1/applications` to find your app's ID
-* you can use `http://localhost:4040/api/v1/applications/{app_id}/executors` to find stats about executors for your app
-* a correct experiment should show one executor always does the work (whichever one is caching the partition).  Results may vary in terms of which of the two executors do the work or initial  counts prior to the start of the experiment -->
+*accuracy* (fraction of times the model is correct)?
 
 ## Submission
+
+Be sure to include a comment at the top of notebook with your name (or both names if you worked as partners).
 
 We should be able to run the following on your submission to directly create the mini cluster:
 
@@ -329,19 +359,6 @@ docker compose up -d
 We should then be able to open `http://localhost:5000/lab`, find your
 notebook, and run it.
 
-## Approximate Rubric:
+## Testing
 
-The following is approximately how we will grade, but we may make
-changes if we overlooked an important part of the specification or did
-not consider a common mistake.
-
-1. [x/1] question 1 (part 1)
-2. [x/1] question 2 (part 2)
-3. [x/1] question 3 (part 2)
-4. [x/1] question 4 (part 2)
-5. [x/1] question 5 (part 2)
-6. [x/1] question 6 (part 3)
-7. [x/1] question 7 (part 3)
-8. [x/1] question 8 (part 3)
-9. [x/1] question 9 (part 4)
-10. [x/1] question 10 (part 4)
+TODO: ...
