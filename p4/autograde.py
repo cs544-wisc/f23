@@ -240,7 +240,7 @@ def create_debug_dir():
     
     target = f"{tester_dir}/notebooks_from_test/"
     print("target: ", target)
-    check_output(f"mkdir {target} && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
+    check_output(f"mkdir {target} -p && cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
 
 @init
 def init(verbose = False):
