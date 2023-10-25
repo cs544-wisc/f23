@@ -121,6 +121,7 @@ def run_student_code():
     print("\n" + "="*70)
     print("Killing worker 1")
     print("="*70)
+    import docker
     client = docker.from_env()
     containers = client.containers.list()
     for container in containers:
