@@ -2,23 +2,42 @@ services:
     nb:
         image: p5-nb
         ports:
-        - "127.0.0.1:5000:5000"
-        - "127.0.0.1:4040:4040"
+            - "127.0.0.1:5000:5000"
+            - "127.0.0.1:4040:4040"
         volumes:
-        - "./nb:/nb"
+            - "./nb:/nb"
+        deploy:
+            resources:
+                limits:
+                    memory: 1.5G
 
     nn:
         image: p5-nn
         hostname: nn
+        deploy:
+            resources:
+                limits:
+                    memory: 1G
 
     dn:
         image: p5-dn
+        deploy:
+            resources:
+                limits:
+                    memory: 1.5G
 
     spark-boss:
         image: p5-boss
         hostname: boss
+        deploy:
+            resources:
+                limits:
+                    memory: 1.5G
 
     spark-worker:
         image: p5-worker
         deploy:
-                replicas: 2
+            replicas: 2
+            resources:
+                limits:
+                    memory: 1.5G

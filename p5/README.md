@@ -266,7 +266,7 @@ Answer with a Python dict looks like this
 ```
 
 
-#### Q5: how many loan applications has the bank "University of Wisconsin Credit Union" received in year 2020 in this dataset?
+#### Q5: how many loan applications has the bank "University of Wisconsin Credit Union" received in 2020 in this dataset?
 
 Use an `INNER JOIN` between `banks` (`banks.lei_2020`) and `loans` (`loans.lei`) to answer this
 question.  `lei` in `loans` lets you identify the bank.  Filter on
@@ -395,4 +395,4 @@ For the autograder to work, for each question, please include a line of comment 
 ...
 ```
 
-Of course, the checker only looks at the answers, not how you got them, so there may be further deductions (especially in the case of hardcoding answers). Moreover, Q6 and Q8 are manually graded, so the autograder will not give you any feedback on them.
+Of course, the checker only looks at the answers, not how you got them, so there may be further deductions (especially in the case of hardcoding answers). Moreover, Q6 and Q8 will be manually graded after your submission, so the autograder will not give you any feedback on them (it always says `PASS`)!
