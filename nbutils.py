@@ -20,6 +20,38 @@ def parse_bool_output(outputs):
         raise Exception("Error parsing output as bool")
     return eval_output
 
+
+def parse_dict_bool_output(outputs):
+    # parse outputs as a dictionary of {str: bool}
+    eval_output = eval(parse_str_output(outputs))
+    if type(eval_output) is not dict:
+        raise Exception("Error parsing output as dict")
+    
+    for key in eval_output.keys():
+        if type(key) is not str:
+            raise Exception("Error parsing output as bool dict")
+        if type(eval_output[key]) is not bool:
+            raise Exception("Error parsing output as bool dict")
+    return eval_output
+
+def parse_dict_float_output(outputs):
+    # parse outputs as a dictionary of {str: float}
+    eval_output = eval(parse_str_output(outputs))
+    if type(eval_output) is not dict:
+        raise Exception("Error parsing output as dict")
+    
+    for key in eval_output.keys():
+        if type(key) is not str:
+            raise Exception("Error parsing output as float dict")
+        if type(eval_output[key]) is not float:
+            raise Exception("Error parsing output as float dict")
+    return eval_output
+
+def is_accurate(lower, actual):
+    if math.isnan(lower) and math.isnan(actual):
+        return True
+    return lower <= actual
+
 def compare_bool(expected, actual):
     return expected == actual
 
@@ -66,6 +98,31 @@ def compare_dict(expected, actual, tolerance = 0.01):
         return True
 
     return expected == actual
+
+
+def compare_dict_floats(expected, actual, tolerance = 0.01):
+    if tolerance:
+        if expected.keys() != actual.keys():
+            return False
+
+        for key in expected.keys():
+            if not compare_float(expected[key], actual[key], tolerance):
+                return False
+                
+        return True
+
+    return expected == actual
+
+def compare_dict_bools(expected, actual):
+    if expected.keys() != actual.keys():
+        return False
+
+    for key in expected.keys():
+        if not compare_bool(expected[key], actual[key]):
+            return False
+            
+    return True
+
 
 def compare_figure(expected, actual):
     return type(expected) == type(actual)
