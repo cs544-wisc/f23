@@ -31,6 +31,7 @@ Before starting, please review the [general project directions](../projects.md).
 * October 18th: Added clarification on which port jupyterlab is being hosted
 * Oct. 18: Added link to tutorial to change instance type
 * Oct. 18: added step to create `.gitignore` file to save students time
+* Oct. 25: Updated notebook.Dockerfile to use older version of jupyter client
 
 ## Part 1: Deployment and Data Upload
 
