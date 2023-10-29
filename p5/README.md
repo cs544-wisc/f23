@@ -75,8 +75,8 @@ To start the Spark boss and workers, you will need to run the `start-master.sh`
 and `start-worker.sh
 spark://boss:7077 -c 1 -m 512M` commands respectively (you'll need to specify
 the full path to these .sh scripts). These scripts launch the Spark
-boss and workers in the background then exit -- make sure your container
-doesn't exist when the script does.
+boss and workers in the background and then exit. Make sure that the containers
+do not exit along with the script and instead keep running until manually stopped.
 
 You should then be able to use the `docker-compose.yml` we proved to
 run `docker compose up -d`.  Wait a bit and make sure all containers
