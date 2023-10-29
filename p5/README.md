@@ -354,7 +354,7 @@ from pyspark.ml.classification import DecisionTreeClassifier
 ```
 
 Use the VectorAssembler to combine the feature columns `loan_amount`,
-`income`, `loan_type`, `interest_rate` into a single column.
+`income`, `interest_rate` into a single column.
 
 Train a `DecisionTreeClassifier` of max depth 5 (and default arguments
 for other parameters) on your training data to predict `approved`
