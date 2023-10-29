@@ -67,19 +67,20 @@ docker build . -f boss.Dockerfile -t p5-boss
 docker build . -f worker.Dockerfile -t p5-worker
 ```
 
-We provide most of these, but you'll need to write `boss.Dockerfile`
-and `worker.Dockerfile` yourself -- these should both use `p5-base` as
-a base Docker image.
+We provide most of the Dockerfiles mentioned above, but you'll need to write 
+`boss.Dockerfile` and `worker.Dockerfile` yourself. These Dockerfiles will invoke
+the Spark boss and workers and will use `p5-base` as their base Docker image.
 
-The commands for these are `start-master.sh` and `start-worker.sh
-spark://boss:7077 -c 1 -m 512M` respectively (you'll need to specify
-the full path to these .sh scripts).  These scripts launch a
-boss/worker in the background then exit -- make sure your container
-doesn't exist when the script does.
+To start the Spark boss and workers, you will need to run the `start-master.sh` 
+and `start-worker.sh
+spark://boss:7077 -c 1 -m 512M` commands respectively (you'll need to specify
+the full path to these .sh scripts). These scripts launch the Spark
+boss and workers in the background and then exit. Make sure that the containers
+do not exit along with the script and instead keep running until manually stopped.
 
 You should then be able to use the `docker-compose.yml` we proved to
 run `docker compose up -d`.  Wait a bit and make sure all containers
-are still running.  If some are starting up then exiting, troubleshoot
+are still running.  If some are starting up and then exiting, troubleshoot
 the reason before proceeding.
 
 ## Data Setup
