@@ -1,0 +1,29 @@
+services:
+    nb:
+        image: spark-demo
+        ports:
+        - "127.0.0.1:5000:5000"
+        - "127.0.0.1:4040:4040"
+        volumes:
+        - "./nb:/nb"
+        command: python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
+
+    nn:
+        image: spark-demo
+        hostname: nn
+        command: sh -c "hdfs namenode -format -force && hdfs namenode -D dfs.replication=1 -fs hdfs://nn:9000"
+
+    dn:
+        image: spark-demo
+        command: hdfs datanode -fs hdfs://nn:9000
+
+    spark-boss:
+        image: spark-demo
+        hostname: boss
+        command: sh -c "/spark-3.5.0-bin-hadoop3/sbin/start-master.sh && sleep infinity"
+
+    spark-worker:
+        image: spark-demo
+        command: sh -c "/spark-3.5.0-bin-hadoop3/sbin/start-worker.sh spark://boss:7077 -c 1 -m 512M && sleep infinity"
+        deploy:
+                replicas: 2
