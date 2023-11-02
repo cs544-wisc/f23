@@ -24,8 +24,13 @@ Learning objectives:
 Before starting, please revisit the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
-
-* none yet
+#### Nov 2. A Hint on q7 
+`county_code` in `loans` is the state and county codes concatenated together whereas `counties` has these as separate columns (as an example, 55025 is the county_code for Dane county in loans, but this will show up as `STATE=55` and `COUNTY=25` in the counties view. As such, you may find the following snippet useful when joining with `counties` 
+```python
+...
+ON loans.county_code = counties.STATE*1000 + counties.COUNTY
+...
+```
 
 ## Cluster Setup
 
