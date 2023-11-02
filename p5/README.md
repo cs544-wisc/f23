@@ -335,8 +335,9 @@ for this exercise, we will use the features `loan_amount`, `income`,
 `interest_rate` in `loans` table for prediction.
 
 First, as a prepartory step, get the features and label from the loans
-table into a new dataframe `df`. Cast the `income` and `interest_rate`
-columns to `double` type and fill missing values by 0.0.
+table into a new dataframe `df`. Cast the `approval`, `income` and `interest_rate`
+columns to `double` type and fill missing values of all features and label columns
+by 0.0.
 
 Then split `df` as follows:
 
