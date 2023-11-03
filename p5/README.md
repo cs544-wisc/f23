@@ -24,13 +24,8 @@ Learning objectives:
 Before starting, please revisit the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
-#### Nov 2. A Hint on q7 
-`county_code` in `loans` is the state and county codes concatenated together whereas `counties` has these as separate columns (as an example, 55025 is the county_code for Dane county in loans, but this will show up as `STATE=55` and `COUNTY=25` in the counties view. As such, you may find the following snippet useful when joining with `counties` 
-```python
-...
-ON loans.county_code = counties.STATE*1000 + counties.COUNTY
-...
-```
+* Nov 2nd: A hint on q7 on how to join with `counties` is added.
+
 
 ## Cluster Setup
 
@@ -287,7 +282,14 @@ Show the output, then write comments (which we will manually grade) explaining t
 
 #### Q7: what are the average interest rates for Wells Fargo applications for the ten counties where Wells Fargo receives the most applications?
 
-Answer with a Python `dict` that looks like this:
+Hint: `county_code` in `loans` is the state and county codes concatenated together whereas `counties` has these as separate columns (as an example, 55025 is the county_code for Dane county in loans, but this will show up as `STATE=55` and `COUNTY=25` in the counties view. As such, you may find the following snippet useful when joining with `counties` 
+```python
+...
+ON loans.county_code = counties.STATE*1000 + counties.COUNTY
+...
+```
+
+Answer Q7 with a Python `dict` that looks like this:
 
 ```python
 {'Milwaukee': 3.1173465727097907,
