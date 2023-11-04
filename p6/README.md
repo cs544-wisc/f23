@@ -63,41 +63,6 @@ your browser.
 Create a notebook `p6.ipynb` in the `/nb` directory for your work.
 Use the same format for answers as in past projects (e.g., `#q1`).
 
-## Datasets
-
-We are going to be using two datasets in this project: a station metadata dataset and a station temperature data dataset. While we provide a high level overview of the datasets in this section, you can find more information about the datasets here: [https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt](https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt)
-
-### Station metadata dataset
-
-You can find the dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt](https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt) which you can download using the `wget` command. Each line of the above file has the following formation:
-```
-------------------------------
-Variable   Columns   Type
-------------------------------
-ID            1-11   Character
-LATITUDE     13-20   Real
-LONGITUDE    22-30   Real
-ELEVATION    32-37   Real
-STATE        39-40   Character
-NAME         42-71   Character
-GSN FLAG     73-75   Character
-HCN/CRN FLAG 77-79   Character
-WMO ID       81-85   Character
-------------------------------
-```
-Each line in the the txt file represents a seperate station and you can read the above table as saying that, for example, columns 1 through 11 of a row represents the ID of that station. 
-
-### Station temperature data dataset
-
-You can get this dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip](https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip) which you can also download using the wget command. 
-You first need to unzip the file using the `unzip` command and when you do that you will notice that it will extract about 5 files, all of whose name follows this format: "<station_id>.parquet". Each file contains all the temperature data for the station it is named after. **We recommend reading these parquet files with Spark with header and inferSchema options enabled**. 
-
-To verify that you can read the files properly, try to read the data for one of the stations as a spark dataframe which we call `spark_df`. Then verify that when you run `spark_df.show()` you see the following four columns:
-* station - The station id
-* date - The this measurement was made in "YYYYMMDD" format
-* type - The type of this measurement - It either going to be "TMIN" or "TMAX"
-* value - The actual value of the measurement
-
 ## Part 1: Station Data
 
 #### Schema Creation
@@ -199,6 +164,20 @@ over the ring and find the correct vnode.
 Handle the case where the ring "wraps around" (meaning the row token is bigger than any vnode).
 
 ## Part 2: Weather Data
+
+TODO
+
+### Station temperature data dataset
+
+You can get this dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip](https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip) which you can also download using the wget command. 
+You first need to unzip the file using the `unzip` command and when you do that you will notice that it will extract about 5 files, all of whose name follows this format: "<station_id>.parquet". Each file contains all the temperature data for the station it is named after. **We recommend reading these parquet files with Spark with header and inferSchema options enabled**. 
+
+To verify that you can read the files properly, try to read the data for one of the stations as a spark dataframe which we call `spark_df`. Then verify that when you run `spark_df.show()` you see the following four columns:
+* station - The station id
+* date - The this measurement was made in "YYYYMMDD" format
+* type - The type of this measurement - It either going to be "TMIN" or "TMAX"
+* value - The actual value of the measurement
+
 
 ### Server
 
