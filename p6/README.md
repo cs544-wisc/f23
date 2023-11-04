@@ -98,7 +98,7 @@ To verify that you can read the files properly, try to read the data for one of 
 * type - The type of this measurement - It either going to be "TMIN" or "TMAX"
 * value - The actual value of the measurement
 
-## Part 1: Station Metadata
+## Part 1: Station Data
 
 #### Schema Creation
 
@@ -129,28 +129,76 @@ The `stations` table should have four columns: `id` (text), `name` (text), `date
 You can execute `describe table weather.stations` and extract the `create_statement` as your answer.  It should look something like this:
 
 ```python
-"CREATE TABLE weather.stations (\n    id text,\n    date date,\n    name text static,\n    record station_record,\n    PRIMARY KEY (id, date)\n) WITH CLUSTERING ORDER BY (date ASC)\n    AND additional_write_policy = '99p'\n    AND bloom_filter_fp_chance = 0.01\n    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}\n    AND cdc = false\n    AND comment = ''\n    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}\n    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}\n    AND memtable = 'default'\n    AND crc_check_chance = 1.0\n    AND default_time_to_live = 0\n    AND extensions = {}\n    AND gc_grace_seconds = 864000\n    AND max_index_interval = 2048\n    AND memtable_flush_period_in_ms = 0\n    AND min_index_interval = 128\n    AND read_repair = 'BLOCKING'\n    AND speculative_retry = '99p';"
+"CREATE TABLE weather.stations (\n id text,\n date date,\n
+name text static,\n record station_record,\n PRIMARY KEY (id, date)\n)
+WITH CLUSTERING ORDER BY (date ASC)\n AND additional_write_policy =
+'99p'\n AND bloom_filter_fp_chance = 0.01\n AND caching = {'keys':
+'ALL', 'rows_per_partition': 'NONE'}\n AND cdc = false\n AND comment =
+''\n AND compaction = {'class':
+'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy',
+'max_threshold': '32', 'min_threshold': '4'}\n AND compression =
+{'chunk_length_in_kb': '16', 'class':
+'org.apache.cassandra.io.compress.LZ4Compressor'}\n AND memtable =
+'default'\n AND crc_check_chance = 1.0\n AND default_time_to_live =
+0\n AND extensions = {}\n AND gc_grace_seconds = 864000\n AND
+max_index_interval = 2048\n AND memtable_flush_period_in_ms = 0\n AND
+min_index_interval = 128\n AND read_repair = 'BLOCKING'\n AND
+speculative_retry = '99p';"
 ```
 
-### Adding metadata to table
+#### Station Data
 
-The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
+Write a cell to download
+https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt (for
+example, `wget`, or some Python code).
 
-We will first work with stations metadata dataset. Use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one.
+Create a local Spark session like this:
 
-#### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
-
-You will answer this question by implementing the `get_tokens` function which takens in a `station_id` and returns two values:
-* `row_token` : The token associated with the given `station_id`. You can use the `token(????)` CQL function in order to calculate this value
-* `vnode_token` : The token of the vnode that comes after the partition for the provided `station_id`. You can use [subprocess.run](https://docs.python.org/3/library/subprocess.html#using-the-subprocess-module) to run `nodetool ring`. Then write some code to parse the output, loop over the ring and find the correct vnode. 
-
-Then call this function for station USC00470273 in the cell with comment "Q2 Ans" and produce an output like this (numbers may differ):
+```python
+from pyspark.sql import SparkSession
+spark = (SparkSession.builder
+         .appName("p6")
+         .config('spark.jars.packages', 'com.datastax.spark:spark-cassandra-connector_2.12:3.4.0')
+         .config("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions")
+         .getOrCreate())
 ```
-Row token: -9014250178872933741
-Vnode token: -8978105931410738024
-```
 
-## Part 2: Temperature Data
+Remember that with a local deployment, the executor runs in the same
+container as your notebook.  This means local file paths will work,
+and you won't use HDFS for anything in this project.
+
+Review the lecture demos where we used Spark to extract the station
+IDs from this text file:
+https://github.com/cs544-wisc/f23/blob/main/lec/22-spark
+
+Use Spark and `SUBSTRING` to extract `ID`, `STATE`, and `NAME` from
+ghcnd-stations.txt.  Reference the documentation to determine the
+offsets
+(this contains format descriptions for several different files, so be
+sure you're reading about the correct one):
+
+https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
+
+Filter your results to the state of Wisconsin, collect the rows in
+your notebook so you can loop over them, and do an `INSERT` into your
+`weather.stations` table for each station ID and name.
+
+#### Q2: what is the name corresponding to station ID `USW00014837`?
+
+Write a Cassandra query to obtain the answer.
+
+#### Q3: what is the token for the `USC00470273` station?
+
+#### Q4: what is the first vnode token in the ring following the token for `USC00470273`?
+
+You can use
+[check_output](https://docs.python.org/3/library/subprocess.html#using-the-subprocess-module)
+to run `nodetool ring`. Then write some code to parse the output, loop
+over the ring and find the correct vnode.
+
+Handle the case where the ring "wraps around" (meaning the row token is bigger than any vnode).
+
+## Part 2: Weather Data
 
 ### Server
 
