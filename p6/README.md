@@ -7,7 +7,9 @@
 NOAA (National Oceanic and Atmospheric Administration) collects
 weather data from all over the world.  In this project, you'll explore
 how you could (1) store this data in Cassandra, (2) write a server for
-data collection, and (3) analyze the collected data via Spark.
+data collection, and (3) analyze the collected data via Spark. You can
+find the datasets we are going to be using in the `datasets` directory
+of `p6`. 
 
 We'll also explore read/write availability tradeoffs.  When always
 want sensors to be able to upload data, but it is OK if we cannot
@@ -16,56 +18,87 @@ results).
 
 Learning objectives:
 * create a schema for a Cassandra table that uses a partition key, cluster key, and static column
-* configure Spark catalogs to gain access to external data sources
 * create custom Cassandra types
 * create custom Spark UDFs (user defined functions)
 * configure queries to tradeoff read/write availability
 * refresh a stale cache
 
-Before starting, please review the [general project directions](../projects.md).
+Before starting, please review the [general project directions](../projects.md). 
 
 ## Corrections/Clarifications
 
-* updated the container setup page. Mounting cassandra.sh instead of main.sh
-* when inserting metatdata to weather station table only insert those stations belongs to Wisconsin only
-* Apr 7: vnode token example in Q2 was incorrect -- fixed it
-* Apr 10: Q4 calculate the correlation between the maximum temperatures in Madison and Milwaukee
-* Apr 11: updated examples to have server.py in "notebooks" (instead of "share")
-* Apr 12: added clarification about counts in q7
+* none yet
+
+## Cluster Setup
+
+We provide the Dockerfile and docker-compose.yml for this project.
+You can run the following:
+
+* `docker build image . -t p6-base`
+* `docker compose up -d`
+
+It will probably take 1-2 minutes for the cluster to be ready.  You
+can `docker exec` into one of the containers and run `nodetool
+status`.  When the cluster is ready, it should show something like
+this:
+
+```
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address     Load       Tokens  Owns (effective)  Host ID                               Rack 
+UN  172.27.0.4  70.28 KiB  16      64.1%             90d9e6d3-6632-4721-a78b-75d65c673db1  rack1
+UN  172.27.0.3  70.26 KiB  16      65.9%             635d1361-5675-4399-89fa-f5624df4a960  rack1
+UN  172.27.0.2  70.28 KiB  16      70.0%             8936a80e-c6b2-42ef-b54d-4160ff08857d  rack1
+```
+
+When the cluster isn't ready yet, that command will usually show a
+Java error and stack trace.
+
+## Datasets
+
+We are going to be using two datasets in this project: a station metadata dataset and a station temperature data dataset. While we provide a high level overview of the datasets in this section, you can find more information about the datasets here: [https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt](https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt)
+
+### Station metadata dataset
+
+You can find the dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt](https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt) which you can download using the `wget` command. Each line of the above file has the following formation:
+```
+------------------------------
+Variable   Columns   Type
+------------------------------
+ID            1-11   Character
+LATITUDE     13-20   Real
+LONGITUDE    22-30   Real
+ELEVATION    32-37   Real
+STATE        39-40   Character
+NAME         42-71   Character
+GSN FLAG     73-75   Character
+HCN/CRN FLAG 77-79   Character
+WMO ID       81-85   Character
+------------------------------
+```
+Each line in the the txt file represents a seperate station and you can read the above table as saying that, for example, columns 1 through 11 of a row represents the ID of that station. 
+
+### Station temperature data dataset
+
+You can get this dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip](https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip) which you can also download using the wget command. 
+You first need to unzip the file using the `unzip` command and when you do that you will notice that it will extract about 5 files, all of whose name follows this format: "<station_id>.parquet". Each file contains all the temperature data for the station it is named after. **We recommend reading these parquet files with Spark with header and inferSchema options enabled**. 
+
+To verify that you can read the files properly, try to read the data for one of the stations as a spark dataframe which we call `spark_df`. Then verify that when you run `spark_df.show()` you see the following four columns:
+* station - The station id
+* date - The this measurement was made in "YYYYMMDD" format
+* type - The type of this measurement - It either going to be "TMIN" or "TMAX"
+* value - The actual value of the measurement
+
+## Setup
+
+We have provided you a Docker compose file that launches three cassandra nodes. You can start up these nodes by making sure you are in the `p6` direcotry and then running `docker build image/. -t p6-base && docker compose up -d`. Note that you need to wait about 15 to 20 seconds after spinning up the containers before you can connect to the cluster. This will also launch up a jupyter notebook which is hosted on `http://localhost:5000/lab` on your VM which you can access on your local machine using port forwarding. 
 
 ## Part 1: Station Metadata
 
-Using Docker compose, launch a cluster three Cassandra nodes.  For
-inspiration, here are some files that could help: [Container Setup
-Files](./containers.md).
-
-Use `docker ps` to see which container is using host port
-127.0.0.1:5000, then manually start Jupyter inside that container:
-
-```
-docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
-```
-
-Create a `p5.ipynb` notebook for your work inside the `notebooks`
-directory.  Your notebook should start by connecting to the Cassandra
-cluster and running `drop keyspace if exists weather`.
-
-Feel free to use the starter code to connect the Cassandra cluster
-
-```python
-from cassandra.cluster import Cluster
-try:
-    cluster = Cluster(['p5-db-1', 'p5-db-2', 'p5-db-3'])
-    session = cluster.connect()
-except Exception as e:
-    print(e)
-```
-
-Depending on the directory where you created your compose files, the
-container names may be different (e.g., not `p5-db-1`) -- please
-update the above snippet accordingly.
-
-Now write some code to do the following:
+The first thing you need to do is implement the `setup_cassandra_table` (which has the comment "TODO: Q1") function which should do the following:
+* drop a `weather` keyspace if it already exists
 * create a `weather` keyspace with 3x replication
 * inside `weather`, create a `station_record` type containing two ints: `tmin` and `tmax`
 * inside `weather`, create a `stations` table
@@ -73,284 +106,166 @@ Now write some code to do the following:
   * `id` is a partition key and corresponds to a station's ID (like 'USC00470273')
   * `date` is a cluster key, ascending
   * `name` is a static field (because there is only one name per ID).  Example: 'UW ARBORETUM - MADISON'
-  * `record` is a regular field because there will be many records per station partition
+  * `record` is a regular field because there will be many records per station partition. Note that since record is a user defined type, you should ensure that is immutable using the `frozen` keyword.
 
 #### Q1: what is the schema?
 
-Run the following so that we can see and check.
+Next run the cell with the comment "Q1 Ans" which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
 
-```python
-print(cass.execute("describe keyspace weather").one().create_statement)
-print(cass.execute("describe table weather.stations").one().create_statement)
-```
+### Adding metadata to table
 
-**Important:** you'll answer 7 questions in this project.  Paste each
-  question and it's number (e.g., "# Q1: ...") as a comment in your
-  notebook prior to each answer so we can easily search your notebook
-  and give you credit for your answers.
+The starter code creates a Spark session for you. Note that we're running Spark in a simple "local mode" -- we're not connecting to a Spark cluster so we won't have multiple workers. Tasks will be executed directly by the driver.
 
-#### Station Metadata
-
-Start a Spark session:
-
-```python
-from pyspark.sql import SparkSession
-spark = (SparkSession.builder
-         .appName("p5")
-         .config('spark.jars.packages', 'com.datastax.spark:spark-cassandra-connector_2.12:3.2.0')
-         .config("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions")
-         .getOrCreate())
-```
-
-Note that we're running Spark in a simple "local mode" -- we're not
-connecting to a Spark cluster so we won't have multiple workers.
-Tasks will be executed directly by the driver.  Also note that we're
-including the Spark/Cassandra connector extension.
-
-Download https://pages.cs.wisc.edu/~harter/cs639/data/ghcnd-stations.txt.
-
-Use https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to understand the columns of `ghcnd-station.txt`.
-
-Use Spark to parse the data and insert metadata for every station that belongs to Wisconsin `WI`
-(`id` and `name` columns only) into `weather.stations`.  Feel free to
-use `.collect()` on your Spark DataFrame and loop over the results,
-inserting one by one. Please make sure to verify your Spark DataFrame
-before inserting metatdata to Casssandra.
-
-**Hint:** ghcnd-station.txt is difficult to work with because (a) it's not a CSV file and (b) it lacks a header row.  Based on the documentation, you'll need to hardcode some offsets to extract cells from each line.  We worked through a simple example with this file in lecture: https://github.com/cs544-wisc/s23/blob/main/lec/18-spark/nb/demo.ipynb
+We will first work with stations metadata dataset. Use Spark and Cassandra to insert the `ID` and `NAME` metadata of every station in `stations_metadata.csv` that belongs to Wisconsin `WI` (i.e. having a `STATE` of `WI`) into `weather.stations`. Feel free to use `.collect()` on your Spark DataFrame and loop over the results, inserting one by one.
 
 #### Q2: what is the token of the vnode that comes first after the partition for the USC00470273 sensor?
 
-Use `check_output` to run `nodetool ring` and print the output.  Use
-the `token(????)` CQL function to get the token for the sensor.  Write
-some code to loop over the ring and find the correct vnode.
+You will answer this question by implementing the `get_tokens` function which takens in a `station_id` and returns two values:
+* `row_token` : The token associated with the given `station_id`. You can use the `token(????)` CQL function in order to calculate this value
+* `vnode_token` : The token of the vnode that comes after the partition for the provided `station_id`. You can use [subprocess.run](https://docs.python.org/3/library/subprocess.html#using-the-subprocess-module) to run `nodetool ring`. Then write some code to parse the output, loop over the ring and find the correct vnode. 
 
-Your output should be something like this (numbers may differ, of course):
-
+Then call this function for station USC00470273 in the cell with comment "Q2 Ans" and produce an output like this (numbers may differ):
 ```
-row token:   -9014250178872933741
-vnode token: -8978105931410738024
+Row token: -9014250178872933741
+Vnode token: -8978105931410738024
 ```
 
 ## Part 2: Temperature Data
 
 ### Server
 
-Now you'll write gRPC-based server.py file that receives temperature
-data and records it to `weather.stations`.  You could imagine various
-sensor devices acting as clients that make gRPC calls to `server.py`
-to record data, but for simplicity we'll make the client calls from
-`p5.ipynb`.
+Now you'll write some code that receives temperature data and records it to `weather.stations` as well as some code to read data
+from `weather.stations`. Specificially, you will be implementing two functions: `record_temperature` which takes in some temperature
+data and insert it into `weather.stations` and `get_maximum` which takes in a station id and returns the maximum temperature the station has seen. 
+The expected behaviour of these functions is defined in detail in the starter code. 
 
-Save the following as `station.proto` and build it to get `station_pb2.py` and `station_pb2_grpc`:
-
-```
-syntax="proto3";
-
-service Station {
-        rpc RecordTemps(RecordTempsRequest) returns (RecordTempsReply) {}
-        rpc StationMax(StationMaxRequest) returns (StationMaxReply) {}
-}
-
-message RecordTempsRequest {
-        string station = 1;
-        string date = 2;
-        int32 tmin = 3;
-        int32 tmax = 4;
-}
-
-message RecordTempsReply {
-        string error = 1;
-}
-
-message StationMaxRequest {
-        string station = 1;
-}
-
-message StationMaxReply {
-        int32 tmax = 1;
-        string error = 2;
-}
-```
-
-In `server.py`, implement the interface from
-`station_pb2_grpc.StationServicer`.  RecordTemps will insert new
-temperature highs/lows to `weather.stations`.  `StationMax` will
-return the maximum `tmax` ever seen for the given station.
-
-Each call should use a prepared statement to insert or access data in
-`weather.stations`.  It could be something like this:
-
-```python
+Each call to insert into or access data from `weather.stations` should use a prepared statement.  You should likely have something like this
+in the cell with the comment "# TODO: Define your prepared statements here":
+```python3
 insert_statement = cass.prepare("????")
 insert_statement.consistency_level = ConsistencyLevel.ONE
 max_statement = cass.prepare("????")
 max_statement.consistency_level = ????
 ```
 
-Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high
-write availability.  The thought is that real sensors might not have
-much space to save old data that hasn't been uploaded, so we want to
-accept writes whenever possible.
-
-Choose R so that R + W > RF.  We want to avoid a situation where a
-`StationMax` returns a smaller temperature than one previously added
-with `RecordTemps`; it would be better to return an error message if
-necessary.
-
-If execute of either prepared statement raises a `ValueError` or
-`cassandra.Unavailable` exception, `server.py` should return a
-response with the `error` string set to something informative.
-
-Choose one of your three containers and start running `server.py`
-there, alongside one of the already-running Cassandra nodes.  You
-could choose one of the containers and do something like this:
-
-```
-docker exec -it ???? python3 /notebooks/server.py
-```
+Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high write availability.  The thought is that real sensors might not have
+much space to save old data that hasn't been uploaded, so we want to accept writes whenever possible. Choose R so that R + W > RF.  We want 
+to avoid a situation where `get_maximum` returns a smaller temperature than one previously added with `record_temperature`; 
+it would be better to return an error message if necessary.If you encouter an error execution your prepared statements, 
+your functions should return an `error` string set to something informative.
 
 ### Client
 
-Write a function `simulate_sensor(station)` that acts like a sensor,
-sending reporting temperature data to the server.  Use it to send data
-from 2022 for these stations: USW00014837, USR0000WDDG, USW00014898,
-USW00014839.  After the upload for each station, use `StationMax` to
-get and print the max temp for that station.
+Implement the `simulate_station` function which takes in a `station_id` and then adds data from that station to `weather.stations`. Your implementation should ensure 
+that for a given `sensor_id`, it should only record data for the **days in `2022` which we have both the `TMIN` and `TMAX` values**. Further details about the 
+function behaviour is provided in the starter code. 
 
-Write from scratch, or use the starter code if you like:
+#### Q3: What the maximum inserted temperatures for stations "USW00014837", "USR0000WDDG", "USW00014839", "USW00014898"?
 
-```python
-import station_pb2_grpc, station_pb2, grpc
-channel = ????
-stub = ????
-
-def simulate_sensor(station):
-    # TODO: loop over tmin/tmax data for every day of 2022 for the given station;
-    # send each to server with RecordTemps call
-
-for station in ["USW00014837", "USR0000WDDG", "USW00014898", "USW00014839"]:
-    simulate_sensor(station)
-    r = stub.StationMax(station_pb2.StationMaxRequest(station=station))
-    if r.error:
-        print(r.error)
-    else:
-        print(f"max temp for {station} is {r.tmax}")
+In the cell with comment "Q3 Ans", call `simulate_sensor` for each of these stations and use the returned value to produce an output like this (numbers may be different):
 ```
-
-We've already downloaded data for all WI stations here for you:
-https://pages.cs.wisc.edu/~harter/cs639/data/wi-stations.zip.  You'll
-need to manipulate the data a bit to get TMIN and TMAX together for
-the same insert (each row contains one type of measurement, so a
-station's daily data is usually spread across multiple rows).
-
-You should have some prints like this:
-
-```
-max temp for USW00014837 is 356
-max temp for USR0000WDDG is 344
-max temp for USW00014898 is 356
-max temp for USW00014839 is 378
+Max temp for USW00014837 is 123
+Max temp for USR0000WDDG is 457
+Max temp for USW00014898 is 213
+Max temp for USW00014839 is 629
 ```
 
 ## Part 3: Spark Analysis
 
-Configured your Spark session so such that
-`spark.table("cassandra.weather.stations")` gives you access to the
-table in Cassandra.
+Next we are going to be configuring our spark session such that we have access to the table in Cassandra. The starter code already includes code to read the table using the session. You can find this code in the cell after the Part 3 header. 
 
-Create a view called `weather2022` that contains all 2022 data from
-`cassandra.weather.stations`.
+Next implement the following functionality in the cell with comment "Create weather view":
+* Create a view called `weather2022` that contains all 2022 data from `cassandra.weather.stations`.
+* Cache `weather2022`.
+* Register a UDF (user-defined function) that takes a TMIN or TMAX number and returns the temperature the Farheneith. Note that the default unit of temperature of a TMIN or TMAX number is ten degrees (i.e. if we have a TMAX of `1` that is equivalent to `10 °C`). 
 
-Cache `weather2022`.
+Verify your implementation by running `spark.sql("show tables").show()` that it produces the following output:
+```
++---------+-----------+-----------+
+|namespace|  tableName|isTemporary|
++---------+-----------+-----------+
+|         |weather2022|       true|
++---------+-----------+-----------+
+```
 
-Register a UDF (user-defined function) that takes a TMIN or TMAX
-number and returns Fahrenheit.  Check
-https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt to learn what
-the units are in by default.
+#### Q4: what were the daily highs and lows at Madison's airport in 2022?
 
-#### Q3: what were the daily highs and lows at Madison's airport in 2022?
+Madison airport has a station id of USW00014837. Using this information and `weather2022` determine the following information:
+* Determine the date that had the lowest `tmin` temperature and get that `tmin` value in Farheneith
+* Determine the date that had the highest `tmax` temperature and get that `tmax` value in Farheneith
 
-Query `weather2022`, use your UDF, and create a plot like this:
+Your output should look like (numbers may differ):
+```
+Date 2020-10-10 has lowest tmin of -32 F
+Date 2023-04-12 has highest max of 13 F
+```
 
-<img src="q3.png" width=600>
+Write your code in the cell with the comment "Q4 Ans". 
 
-This is station USW00014837.
 
-#### Q4: what is the correlation between maximum temperatures in Madison and Milwaukee?
+#### Q5: what is the correlation between maximum temperatures in Madison and Milwaukee?
 
-For Madison use USW00014837 and for Milwaukee use USW00014839.
-
-See https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.functions.corr.html.
+Use station id of USW00014837 for Madison and USW00014839 for Milwauke. Checkout the [coor function](https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.functions.corr.html) provided by pyspark, which has already been imported for you. Write your code in the cell with the comment "Q5 Ans" and ensure that prints out the coorelation rounded to 2 decimal places. The output of running the cell should be something like this (number might be different):
+```
+Coorelation of 0.21
+```
 
 ## Part 4: Disaster Strikes
 
-Before starting this part, manually kill one of your three containers
-(you can pick, but be sure not to disrupt `server.py` or your Jupyter
-notebook).
+**Before starting this part, kill either the `p6-db-2` or the `p6-db-3` container.**
 
-#### Q5: does StationMax still work?
+#### Q6: Does get_max still work?
 
-Call `stub.StationMax(station_pb2.StationMaxRequest(station="USW00014837"))` to find out.
+Try to get the maximum for sensor USW00014837 using the `get_maximum` function. Record the response of the function call in the cell with the comment "Q6 Ans". 
 
-#### Q6: does simulate_sensor still work?
+#### Q7: Does simulate_sensor still work?
 
-Try another station to find out:
+Try to add data for sensor USC00477115 using the `simulate_sensor` function. Record the response of the function call in the cell with the comment "Q7 Ans". 
 
-```python
-simulate_sensor("USC00477115")
+#### Q8 how does refreshing the stale cache change the number of rows in weather2022?
+
+Get the number of rows in weather2022, refresh the cache, then get the count again. Your output should look like:
+```
+Before refresh: 1460
+After refresh: 1825
 ```
 
-#### Q7: how does refreshing the stale cache change the number of rows in weather2022?
-
-Print the count, refresh the cache, then print again.  It should be something like this:
-
-```
-BEFORE REFRESH: 1460
-AFTER REFRESH: 1825
-```
-
-Note that we're only counting regular rows of data (not per-partition
-data in partition keys and static columns), so you can use something
-`COUNT(record)` to only count rows where record is not NULL.
+Note that we're only counting regular rows of data (not per-partition data in partition keys and static columns), so you can use something
+`COUNT(record)` to only count rows where record is not NULL. Write your code in the cell with the comment "Q8 Ans"
 
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker build -t p5-image ./image
-docker compose up
+docker-compose up
 ```
 
-We should be able to start Jupyter and your server like this:
+We should then be able to open `http://localhost:5000/lab`, find your notebook, and run it.
 
+We also be using an autograder to verify your solution which you can run yourself by running the following command in the `p6` directory:
 ```
-docker exec -it -d ???? python3 -m jupyterlab --no-browser --ip=0.0.0.0 --port=5000 --allow-root --NotebookApp.token=''
-```
-
-AND
-
-```
-docker exec -it ???? python3 /notebooks/server.py
+python3 autograder.py
 ```
 
-We should then be able to open `http://localhost:5000/lab`, find your
-notebook, and run it.
+If we want to see how the autograder works as well as to see the result produced when running your notebooks, run the command in the `p6` directory. 
+```
+python3 autograder.py -g
+```
+This will create a `p6_results` dir in your `tester` directory and you can find the results in `p6/autograder_results`. 
 
 ## Approximate Rubric:
 
-The following is approximately how we will grade, but we may make
-changes if we overlooked an important part of the specification or did
+The following is approximately how we will grade, but we may make changes if we overlooked an important part of the specification or did
 not consider a common mistake.
 
 1. [x/1] question 1 (part 1)
 2. [x/1] question 2 (part 1)
 3. [x/1] **server** (part 2)
-4. [x/1] **client** (part 2)
+4. [x/1] question 3 (part 2)
 5. [x/1] **view/caching/UDF** (part 3)
-6. [x/1] question 3 (part 3)
-7. [x/1] question 4 (part 3)
-8. [x/1] question 5 (part 4)
-9. [x/1] question 6 (part 4)
-10. [x/1] question 7 (part 4)
+6. [x/1] question 4 (part 3)
+7. [x/1] question 5 (part 3)
+8. [x/1] question 6 (part 4)
+9. [x/1] question 7 (part 4)
+10. [x/1] question 8 (part 4)
