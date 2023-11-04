@@ -56,6 +56,13 @@ UN  172.27.0.2  70.28 KiB  16      70.0%             8936a80e-c6b2-42ef-b54d-416
 When the cluster isn't ready yet, that command will usually show a
 Java error and stack trace.
 
+The `p6-db-1` container will be running JupyterLab as well.  Check the
+Docker port forwarding configuration and setup a tunnel to connect via
+your browser.
+
+Create a notebook `p6.ipynb` in the `/nb` directory for your work.
+Use the same format for answers as in past projects (e.g., `#q1`).
+
 ## Datasets
 
 We are going to be using two datasets in this project: a station metadata dataset and a station temperature data dataset. While we provide a high level overview of the datasets in this section, you can find more information about the datasets here: [https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt](https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt)
@@ -91,26 +98,39 @@ To verify that you can read the files properly, try to read the data for one of 
 * type - The type of this measurement - It either going to be "TMIN" or "TMAX"
 * value - The actual value of the measurement
 
-## Setup
-
-We have provided you a Docker compose file that launches three cassandra nodes. You can start up these nodes by making sure you are in the `p6` direcotry and then running `docker build image/. -t p6-base && docker compose up -d`. Note that you need to wait about 15 to 20 seconds after spinning up the containers before you can connect to the cluster. This will also launch up a jupyter notebook which is hosted on `http://localhost:5000/lab` on your VM which you can access on your local machine using port forwarding. 
-
 ## Part 1: Station Metadata
 
-The first thing you need to do is implement the `setup_cassandra_table` (which has the comment "TODO: Q1") function which should do the following:
+#### Schema Creation
+
+In your notebook, first connect to the Cassandra cluster:
+
+```python
+from cassandra.cluster import Cluster
+cluster = Cluster(['p6-db-1', 'p6-db-2', 'p6-db-3'])
+cass = cluster.connect()
+```
+
+Then write code to do the following:
+
 * drop a `weather` keyspace if it already exists
 * create a `weather` keyspace with 3x replication
 * inside `weather`, create a `station_record` type containing two ints: `tmin` and `tmax`
 * inside `weather`, create a `stations` table
-  * have four columns: `id` (text), `name` (text), `date` (date), `record` (weather.station_record)
-  * `id` is a partition key and corresponds to a station's ID (like 'USC00470273')
-  * `date` is a cluster key, ascending
-  * `name` is a static field (because there is only one name per ID).  Example: 'UW ARBORETUM - MADISON'
-  * `record` is a regular field because there will be many records per station partition. Note that since record is a user defined type, you should ensure that is immutable using the `frozen` keyword.
 
-#### Q1: what is the schema?
+The `stations` table should have four columns: `id` (text), `name` (text), `date` (date), `record` (weather.station_record):
 
-Next run the cell with the comment "Q1 Ans" which calls `setup_cassandra_table()` function and then executes a couple of queries to verify the schema is as expected. 
+* `id` is a partition key and corresponds to a station's ID (like 'USC00470273')
+* `date` is a cluster key, ascending
+* `name` is a static field (because there is only one name per ID).  Example: 'UW ARBORETUM - MADISON'
+* `record` is a regular field because there will be many records per station partition.
+
+#### Q1: What is the Schema of `stations`?
+
+You can execute `describe table weather.stations` and extract the `create_statement` as your answer.  It should look something like this:
+
+```python
+"CREATE TABLE weather.stations (\n    id text,\n    date date,\n    name text static,\n    record station_record,\n    PRIMARY KEY (id, date)\n) WITH CLUSTERING ORDER BY (date ASC)\n    AND additional_write_policy = '99p'\n    AND bloom_filter_fp_chance = 0.01\n    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}\n    AND cdc = false\n    AND comment = ''\n    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}\n    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}\n    AND memtable = 'default'\n    AND crc_check_chance = 1.0\n    AND default_time_to_live = 0\n    AND extensions = {}\n    AND gc_grace_seconds = 864000\n    AND max_index_interval = 2048\n    AND memtable_flush_period_in_ms = 0\n    AND min_index_interval = 128\n    AND read_repair = 'BLOCKING'\n    AND speculative_retry = '99p';"
+```
 
 ### Adding metadata to table
 
