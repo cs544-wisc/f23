@@ -265,36 +265,33 @@ Use Spark to compute the answer, and convert to `dict` for your output, like thi
 
 ## Part 4: Disaster Strikes
 
-**Before starting this part, kill either the `p6-db-2` or the `p6-db-3` container.**
+**Important:* run a `docker` command to kill the `p6-db-2` container.
 
-#### Q6: Does get_max still work?
+#### Q8: Does get_max still work?
 
 Try to get the maximum for sensor USW00014837 using the `get_maximum` function. Record the response of the function call in the cell with the comment "Q6 Ans". 
 
-#### Q7: Does simulate_sensor still work?
+#### Q9: Does simulate_sensor still work?
 
 Try to add data for sensor USC00477115 using the `simulate_sensor` function. Record the response of the function call in the cell with the comment "Q7 Ans". 
-
-#### Q8 how does refreshing the stale cache change the number of rows in weather2022?
-
-Get the number of rows in weather2022, refresh the cache, then get the count again. Your output should look like:
-```
-Before refresh: 1460
-After refresh: 1825
-```
-
-Note that we're only counting regular rows of data (not per-partition data in partition keys and static columns), so you can use something
-`COUNT(record)` to only count rows where record is not NULL. Write your code in the cell with the comment "Q8 Ans"
 
 ## Submission
 
 We should be able to run the following on your submission to create the mini cluster:
 
 ```
-docker-compose up
+docker compose up -d
 ```
 
-We should then be able to open `http://localhost:5000/lab`, find your notebook, and run it.
+We should the be able to launch your server like this:
+
+```
+docker exec -it p6-db-1 python3 /nb/server.py
+```
+
+We should also be able to open `http://localhost:5000/lab`, find your notebook, and run it.
+
+## Testing:
 
 We also be using an autograder to verify your solution which you can run yourself by running the following command in the `p6` directory:
 ```
@@ -306,19 +303,3 @@ If we want to see how the autograder works as well as to see the result produced
 python3 autograder.py -g
 ```
 This will create a `p6_results` dir in your `tester` directory and you can find the results in `p6/autograder_results`. 
-
-## Approximate Rubric:
-
-The following is approximately how we will grade, but we may make changes if we overlooked an important part of the specification or did
-not consider a common mistake.
-
-1. [x/1] question 1 (part 1)
-2. [x/1] question 2 (part 1)
-3. [x/1] **server** (part 2)
-4. [x/1] question 3 (part 2)
-5. [x/1] **view/caching/UDF** (part 3)
-6. [x/1] question 4 (part 3)
-7. [x/1] question 5 (part 3)
-8. [x/1] question 6 (part 4)
-9. [x/1] question 7 (part 4)
-10. [x/1] question 8 (part 4)
