@@ -265,10 +265,10 @@ Use Spark to compute the answer, and convert to `dict` for your output, like thi
 
 ## Part 4: Disaster Strikes
 
-**Important:* run a `docker` command to kill the `p6-db-2` container.
+**Important:** run a `docker` command to kill the `p6-db-2` container.
 
 #### Q8: Does get_max still work?
-
+     
 Try to get the maximum for sensor USW00014837 using the `get_maximum` function. Record the response of the function call in the cell with the comment "Q6 Ans". 
 
 #### Q9: Does simulate_sensor still work?
