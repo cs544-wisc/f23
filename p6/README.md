@@ -227,42 +227,40 @@ to obtain the answer.
 
 ## Part 3: Spark Analysis
 
-Next we are going to be configuring our spark session such that we have access to the table in Cassandra. The starter code already includes code to read the table using the session. You can find this code in the cell after the Part 3 header. 
+#### `stations` view
 
-Next implement the following functionality in the cell with comment "Create weather view":
-* Create a view called `weather2022` that contains all 2022 data from `cassandra.weather.stations`.
-* Cache `weather2022`.
-* Register a UDF (user-defined function) that takes a TMIN or TMAX number and returns the temperature the Farheneith. Note that the default unit of temperature of a TMIN or TMAX number is ten degrees (i.e. if we have a TMAX of `1` that is equivalent to `10 °C`). 
+Create a temporary view in Spark named `stations` that corresponds to
+the `stations` table in Cassandra.
 
-Verify your implementation by running `spark.sql("show tables").show()` that it produces the following output:
-```
-+---------+-----------+-----------+
-|namespace|  tableName|isTemporary|
-+---------+-----------+-----------+
-|         |weather2022|       true|
-+---------+-----------+-----------+
-```
+Hint: you already enabled `CassandraSparkExtensions` when creating
+your Spark session, so you can create a Spark DataFrame corresponding
+to a Cassandra table like this:
 
-#### Q4: what were the daily highs and lows at Madison's airport in 2022?
-
-Madison airport has a station id of USW00014837. Using this information and `weather2022` determine the following information:
-* Determine the date that had the lowest `tmin` temperature and get that `tmin` value in Farheneith
-* Determine the date that had the highest `tmax` temperature and get that `tmax` value in Farheneith
-
-Your output should look like (numbers may differ):
-```
-Date 2020-10-10 has lowest tmin of -32 F
-Date 2023-04-12 has highest max of 13 F
+```python
+spark.read.format("org.apache.spark.sql.cassandra")
+.option("spark.cassandra.connection.host", "p6-db-1,p6-db-2,p6-db-3")
+.option("keyspace", ????)
+.option("table", ????)
+.load()
 ```
 
-Write your code in the cell with the comment "Q4 Ans". 
+#### Q6: what tables/views are available in the Spark catalog?
 
+You can answer with this:
 
-#### Q5: what is the correlation between maximum temperatures in Madison and Milwaukee?
-
-Use station id of USW00014837 for Madison and USW00014839 for Milwauke. Checkout the [coor function](https://spark.apache.org/docs/3.1.1/api/python/reference/api/pyspark.sql.functions.corr.html) provided by pyspark, which has already been imported for you. Write your code in the cell with the comment "Q5 Ans" and ensure that prints out the coorelation rounded to 2 decimal places. The output of running the cell should be something like this (number might be different):
+```python
+spark.catalog.listTables()
 ```
-Coorelation of 0.21
+
+#### Q7: what is the average difference between tmax and tmin, for each of the four stations that have temperature records?
+
+Use Spark to compute the answer, and convert to `dict` for your output, like this:
+
+```python
+{'USW00014839': 89.6986301369863,
+ 'USR0000WDDG': 102.06849315068493,
+ 'USW00014837': 105.62739726027397,
+ 'USW00014898': 102.93698630136986}
 ```
 
 ## Part 4: Disaster Strikes
