@@ -17,11 +17,9 @@ always read the latest stats (we prefer an error over inconsistent
 results).
 
 Learning objectives:
-* create a schema for a Cassandra table that uses a partition key, cluster key, and static column
-* create custom Cassandra types
-* create custom Spark UDFs (user defined functions)
-* configure queries to tradeoff read/write availability
-* refresh a stale cache
+* create Cassandra schemas involving partition keys and cluster keys
+* move data between Spark and Cassandra
+* configure queries to achieve a tradeoff between read and write availability
 
 Before starting, please review the [general project directions](../projects.md). 
 
@@ -197,16 +195,39 @@ Choose R so that R + W > RF.  We want to avoid a situation where a
 with `RecordTemps`; it would be better to return an error message if
 necessary.
 
-If execute of either prepared statement raises a `ValueError` or
-`cassandra.Unavailable` exception, `server.py` should return a
-response with the `error` string set to something informative.
-
 Launch your server in the same container as your notebook.  There are
 multiple ways you could do this, one options is with `docker exec`:
 
 ```
 docker exec -it p6-db-1 python3 /nb/server.py
 ```
+
+#### Error Handling
+
+Note that `RecordTempsReply` and `StationMaxReply` both have a string
+field called `error`.
+
+For a successful request, these should contain the empty string, `""`.
+
+If executing a Cassandra statement raises a `cassandra.Unavailable`
+except `e`, then the `error` should have a string like this:
+
+```python
+'need 3 replicas, but only have 2'
+```
+
+The specific for the error message can be found in
+`e.required_replicas` and `e.alive_replicas`, respectively.
+
+Sometimes `cassandra.Unavailable` is wrapped inside a
+`cassandra.cluster.NoHostAvailable` exception.  If you catch a
+`NoHostAvailable` exception `e`, loop over the values in the
+`e.errors` dictionary.  If any of these values are of type
+`cassandra.Unavailable`, use it to generate the same error as earlier
+(like 'need 3 replicas, but only have 1').
+
+For other errors/exceptions, you can decide what the `error` message
+should be (we recommend choosing something that will help you debug).
 
 #### Data Upload
 
@@ -267,13 +288,19 @@ Use Spark to compute the answer, and convert to `dict` for your output, like thi
 
 **Important:** run a `docker` command to kill the `p6-db-2` container.
 
-#### Q8: Does get_max still work?
-     
-Try to get the maximum for sensor USW00014837 using the `get_maximum` function. Record the response of the function call in the cell with the comment "Q6 Ans". 
+#### Q8: what does `nodetool status` output?
 
-#### Q9: Does simulate_sensor still work?
+You can use the `! COMMAND` technique to show the output in a cell.
 
-Try to add data for sensor USC00477115 using the `simulate_sensor` function. Record the response of the function call in the cell with the comment "Q7 Ans". 
+#### Q9: if you make a `StationMax` RPC call, what does the `error` field contain in `StationMaxReply` reply?
+
+Choose any station you like for the call.
+
+#### Q10: if you make a `RecordTempsRequest` RPC call, what does `error` contain in the `RecordTempsReply` reply?
+
+Make up some data (station, date, tmin and tmax).  Inserts should
+happen with `ConsistencyLevel.ONE`, so this ought to work, meaning the
+empty string is the expected result for `error`.
 
 ## Submission
 
