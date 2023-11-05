@@ -113,10 +113,6 @@ speculative_retry = '99p';"
 
 #### Station Data
 
-Write a cell to download
-https://pages.cs.wisc.edu/~harter/cs544/data/ghcnd-stations.txt (for
-example, `wget`, or some Python code).
-
 Create a local Spark session like this:
 
 ```python
@@ -132,17 +128,17 @@ Remember that with a local deployment, the executor runs in the same
 container as your notebook.  This means local file paths will work,
 and you won't use HDFS for anything in this project.
 
-Review the lecture demos where we used Spark to extract the station
-IDs from this text file:
-https://github.com/cs544-wisc/f23/blob/main/lec/22-spark
-
 Use Spark and `SUBSTRING` to extract `ID`, `STATE`, and `NAME` from
-ghcnd-stations.txt.  Reference the documentation to determine the
+`nb/ghcnd-stations.txt`.  Reference the documentation to determine the
 offsets
 (this contains format descriptions for several different files, so be
 sure you're reading about the correct one):
 
 https://www.ncei.noaa.gov/pub/data/ghcn/daily/readme.txt
+
+Review the lecture demos where we used Spark to extract the station
+IDs from this text file:
+https://github.com/cs544-wisc/f23/blob/main/lec/22-spark
 
 Filter your results to the state of Wisconsin, collect the rows in
 your notebook so you can loop over them, and do an `INSERT` into your
@@ -165,41 +161,62 @@ Handle the case where the ring "wraps around" (meaning the row token is bigger t
 
 ## Part 2: Weather Data
 
-TODO
+#### Server
 
-### Station temperature data dataset
+Now you'll write gRPC-based `nb/server.py` file that receives
+temperature data and records it to `weather.stations`.  You could
+imagine various sensor devices acting as clients that make gRPC calls
+to `server.py` to record data, but for simplicity we'll make the
+client calls from `p5.ipynb`.
 
-You can get this dataset at [https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip](https://pages.cs.wisc.edu/~harter/cs544/data/wi-stations-data.zip) which you can also download using the wget command. 
-You first need to unzip the file using the `unzip` command and when you do that you will notice that it will extract about 5 files, all of whose name follows this format: "<station_id>.parquet". Each file contains all the temperature data for the station it is named after. **We recommend reading these parquet files with Spark with header and inferSchema options enabled**. 
+Build the `station.proto` we provide to get `station_pb2.py` and
+`station_pb2_grpc` (consider reviewing P3 for how to do this).
 
-To verify that you can read the files properly, try to read the data for one of the stations as a spark dataframe which we call `spark_df`. Then verify that when you run `spark_df.show()` you see the following four columns:
-* station - The station id
-* date - The this measurement was made in "YYYYMMDD" format
-* type - The type of this measurement - It either going to be "TMIN" or "TMAX"
-* value - The actual value of the measurement
+In `server.py`, implement the interface from
+`station_pb2_grpc.StationServicer`.  RecordTemps will insert new
+temperature highs/lows to `weather.stations`.  `StationMax` will
+return the maximum `tmax` ever seen for the given station.
 
+Each call should use a prepared statement to insert or access data in
+`weather.stations`.  It could be something like this:
 
-### Server
-
-Now you'll write some code that receives temperature data and records it to `weather.stations` as well as some code to read data
-from `weather.stations`. Specificially, you will be implementing two functions: `record_temperature` which takes in some temperature
-data and insert it into `weather.stations` and `get_maximum` which takes in a station id and returns the maximum temperature the station has seen. 
-The expected behaviour of these functions is defined in detail in the starter code. 
-
-Each call to insert into or access data from `weather.stations` should use a prepared statement.  You should likely have something like this
-in the cell with the comment "# TODO: Define your prepared statements here":
-```python3
+```python
 insert_statement = cass.prepare("????")
 insert_statement.consistency_level = ConsistencyLevel.ONE
 max_statement = cass.prepare("????")
 max_statement.consistency_level = ????
 ```
 
-Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high write availability.  The thought is that real sensors might not have
-much space to save old data that hasn't been uploaded, so we want to accept writes whenever possible. Choose R so that R + W > RF.  We want 
-to avoid a situation where `get_maximum` returns a smaller temperature than one previously added with `record_temperature`; 
-it would be better to return an error message if necessary.If you encouter an error execution your prepared statements, 
-your functions should return an `error` string set to something informative.
+Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high
+write availability.  The thought is that real sensors might not have
+much space to save old data that hasn't been uploaded, so we want to
+accept writes whenever possible.
+
+Choose R so that R + W > RF.  We want to avoid a situation where a
+`StationMax` returns a smaller temperature than one previously added
+with `RecordTemps`; it would be better to return an error message if
+necessary.
+
+If execute of either prepared statement raises a `ValueError` or
+`cassandra.Unavailable` exception, `server.py` should return a
+response with the `error` string set to something informative.
+
+Launch your server in the same container as your notebook.  There are
+multiple ways you could do this, one options is with `docker exec`:
+
+```
+docker exec -it p6-db-1 python3 /nb/server.py
+```
+
+#### Data Upload
+
+Unzip `records.zip` to get `records.parquet`.  In your `p6.ipnynb`
+notebook, use Spark to load this and re-arrange the data so that there
+is (a) one row per station/date combination, and (b) tmin and tmax
+columns.  You can ignore other measurements.
+
+Collect and loop over the results, making a call to the server with
+for each row to insert the measurements to the database.
 
 ### Client
 
@@ -207,15 +224,9 @@ Implement the `simulate_station` function which takes in a `station_id` and then
 that for a given `sensor_id`, it should only record data for the **days in `2022` which we have both the `TMIN` and `TMAX` values**. Further details about the 
 function behaviour is provided in the starter code. 
 
-#### Q3: What the maximum inserted temperatures for stations "USW00014837", "USR0000WDDG", "USW00014839", "USW00014898"?
+#### Q5: what is the max temperature ever seen for station USW00014837?
 
-In the cell with comment "Q3 Ans", call `simulate_sensor` for each of these stations and use the returned value to produce an output like this (numbers may be different):
-```
-Max temp for USW00014837 is 123
-Max temp for USR0000WDDG is 457
-Max temp for USW00014898 is 213
-Max temp for USW00014839 is 629
-```
+The code in your notebook cell should make an RPC call to your server to obtain the answer.
 
 ## Part 3: Spark Analysis
 
