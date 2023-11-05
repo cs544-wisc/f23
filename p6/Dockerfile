@@ -1,8 +1,8 @@
 FROM ubuntu:22.04
 RUN apt-get update; apt-get install -y wget curl openjdk-8-jdk python3-pip net-tools lsof nano
 
-# Jupyter
-RUN pip3 install jupyterlab==4.0.3 pandas==2.1.1 pyspark==3.4.1 cassandra-driver==3.28.0
+# Python stuff
+RUN pip3 install jupyterlab==4.0.3 pandas==2.1.1 pyspark==3.4.1 cassandra-driver==3.28.0 grpcio==1.58.0 grpcio-tools==1.58.0
 
 # SPARK
 RUN wget https://dlcdn.apache.org/spark/spark-3.4.1/spark-3.4.1-bin-hadoop3.tgz && tar -xf spark-3.4.1-bin-hadoop3.tgz && rm spark-3.4.1-bin-hadoop3.tgz

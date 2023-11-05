@@ -167,7 +167,7 @@ Now you'll write gRPC-based `nb/server.py` file that receives
 temperature data and records it to `weather.stations`.  You could
 imagine various sensor devices acting as clients that make gRPC calls
 to `server.py` to record data, but for simplicity we'll make the
-client calls from `p5.ipynb`.
+client calls from `p6.ipynb`.
 
 Build the `station.proto` we provide to get `station_pb2.py` and
 `station_pb2_grpc` (consider reviewing P3 for how to do this).
@@ -218,15 +218,12 @@ columns.  You can ignore other measurements.
 Collect and loop over the results, making a call to the server with
 for each row to insert the measurements to the database.
 
-### Client
-
-Implement the `simulate_station` function which takes in a `station_id` and then adds data from that station to `weather.stations`. Your implementation should ensure 
-that for a given `sensor_id`, it should only record data for the **days in `2022` which we have both the `TMIN` and `TMAX` values**. Further details about the 
-function behaviour is provided in the starter code. 
+Change number types and date formats as necessary.
 
 #### Q5: what is the max temperature ever seen for station USW00014837?
 
-The code in your notebook cell should make an RPC call to your server to obtain the answer.
+The code in your notebook cell should make an RPC call to your server
+to obtain the answer.
 
 ## Part 3: Spark Analysis
 
