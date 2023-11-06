@@ -6,5 +6,4 @@ sed -i "s/^rpc_address:.*/rpc_address: "`hostname`"/" /apache-cassandra-4.1.3/co
 sed -i "s/- seeds:.*/- seeds: p6-db-1,p6-db-2,p6-db-3/" /apache-cassandra-4.1.3/conf/cassandra.yaml
 
 /apache-cassandra-4.1.3/bin/cassandra -R
-
 sleep infinity

@@ -29,30 +29,14 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Cluster Setup
 
+We have provided you with a `setup.sh` which will download and setup all the necessary files for this project. 
+Note that you might need to give `setup.sh` executable permission before running it.
+
 We provide the Dockerfile and docker-compose.yml for this project.
 You can run the following:
 
-* `docker build image . -t p6-base`
+* `docker build . -t p6-base`
 * `docker compose up -d`
-
-It will probably take 1-2 minutes for the cluster to be ready.  You
-can `docker exec` into one of the containers and run `nodetool
-status`.  When the cluster is ready, it should show something like
-this:
-
-```
-Datacenter: datacenter1
-=======================
-Status=Up/Down
-|/ State=Normal/Leaving/Joining/Moving
---  Address     Load       Tokens  Owns (effective)  Host ID                               Rack 
-UN  172.27.0.4  70.28 KiB  16      64.1%             90d9e6d3-6632-4721-a78b-75d65c673db1  rack1
-UN  172.27.0.3  70.26 KiB  16      65.9%             635d1361-5675-4399-89fa-f5624df4a960  rack1
-UN  172.27.0.2  70.28 KiB  16      70.0%             8936a80e-c6b2-42ef-b54d-4160ff08857d  rack1
-```
-
-When the cluster isn't ready yet, that command will usually show a
-Java error and stack trace.
 
 The `p6-db-1` container will be running JupyterLab as well.  Check the
 Docker port forwarding configuration and setup a tunnel to connect via
@@ -65,7 +49,27 @@ Use the same format for answers as in past projects (e.g., `#q1`).
 
 #### Schema Creation
 
-In your notebook, first connect to the Cassandra cluster:
+It generally takes around 1 to 2 minutes fro the Cassandra cluster to be ready. Write a cell like this:
+```python3
+!nodetool status
+```
+
+and if the cluster is ready, it will produce an output like this:
+```
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address     Load       Tokens  Owns (effective)  Host ID                               Rack 
+UN  172.27.0.4  70.28 KiB  16      64.1%             90d9e6d3-6632-4721-a78b-75d65c673db1  rack1
+UN  172.27.0.3  70.26 KiB  16      65.9%             635d1361-5675-4399-89fa-f5624df4a960  rack1
+UN  172.27.0.2  70.28 KiB  16      70.0%             8936a80e-c6b2-42ef-b54d-4160ff08857d  rack1
+```
+
+If the cluster is not ready it will generally show an error. If this occurs then wait a little bit and rerun the command
+and keep doing so until you see that the cluster is ready. 
+
+Then connect to the Cassandra cluster using this code:
 
 ```python
 from cassandra.cluster import Cluster
@@ -140,7 +144,10 @@ https://github.com/cs544-wisc/f23/blob/main/lec/22-spark
 
 Filter your results to the state of Wisconsin, collect the rows in
 your notebook so you can loop over them, and do an `INSERT` into your
-`weather.stations` table for each station ID and name.
+`weather.stations` table for each station ID and name. 
+
+If you did this correctly, then running the query `SELECT COUNT(*) FROM weather.stations`
+should produce "1313" as the output.
 
 #### Q2: what is the name corresponding to station ID `USW00014837`?
 
@@ -155,7 +162,7 @@ You can use
 to run `nodetool ring`. Then write some code to parse the output, loop
 over the ring and find the correct vnode.
 
-Handle the case where the ring "wraps around" (meaning the row token is bigger than any vnode).
+Handle the case where the ring "wraps around" (meaning the row token is bigger or smaller than any vnode).
 
 ## Part 2: Weather Data
 
@@ -165,14 +172,14 @@ Now you'll write gRPC-based `nb/server.py` file that receives
 temperature data and records it to `weather.stations`.  You could
 imagine various sensor devices acting as clients that make gRPC calls
 to `server.py` to record data, but for simplicity we'll make the
-client calls from `p6.ipynb`.
+client calls from `p6.ipynb`. 
 
 Build the `station.proto` we provide to get `station_pb2.py` and
 `station_pb2_grpc` (consider reviewing P3 for how to do this).
 
 In `server.py`, implement the interface from
 `station_pb2_grpc.StationServicer`.  RecordTemps will insert new
-temperature highs/lows to `weather.stations`.  `StationMax` will
+temperature highs/lows to `weather.stations`. `StationMax` will
 return the maximum `tmax` ever seen for the given station.
 
 Each call should use a prepared statement to insert or access data in
@@ -188,15 +195,14 @@ max_statement.consistency_level = ????
 Note that W = 1 (`ConsistencyLevel.ONE`) because we prioritize high
 write availability.  The thought is that real sensors might not have
 much space to save old data that hasn't been uploaded, so we want to
-accept writes whenever possible.
+accept writes whenever possible. **Host your server on port 5440**.
 
 Choose R so that R + W > RF.  We want to avoid a situation where a
 `StationMax` returns a smaller temperature than one previously added
 with `RecordTemps`; it would be better to return an error message if
-necessary.
+necessary. Note that `RecordTemps` has field 
 
-Launch your server in the same container as your notebook.  There are
-multiple ways you could do this, one options is with `docker exec`:
+Launch your server in `p6-db-1` using the following command:
 
 ```
 docker exec -it p6-db-1 python3 /nb/server.py
@@ -296,11 +302,10 @@ You can use the `! COMMAND` technique to show the output in a cell.
 
 Choose any station you like for the call.
 
-#### Q10: if you make a `RecordTempsRequest` RPC call, what does `error` contain in the `RecordTempsReply` reply?
+#### Q10: if you make a `RecordTempsRequest` RPC call, what is the length of `error` in the `RecordTempsReply` reply?
 
-Make up some data (station, date, tmin and tmax).  Inserts should
-happen with `ConsistencyLevel.ONE`, so this ought to work, meaning the
-empty string is the expected result for `error`.
+Make up some data (station, date, tmin and tmax).  Inserts should happen with `ConsistencyLevel.ONE`, so this ought to work, meaning that
+we except a string of length 0 in `error`.
 
 ## Submission
 
@@ -322,11 +327,10 @@ We should also be able to open `http://localhost:5000/lab`, find your notebook, 
 
 We also be using an autograder to verify your solution which you can run yourself by running the following command in the `p6` directory:
 ```
-python3 autograder.py
+sudo python3 autograder.py
 ```
 
-If we want to see how the autograder works as well as to see the result produced when running your notebooks, run the command in the `p6` directory. 
-```
-python3 autograder.py -g
-```
-This will create a `p6_results` dir in your `tester` directory and you can find the results in `p6/autograder_results`. 
+This will create a `autograder_result` directory with the following content:
+* `result.ipynb` : This will contain the result of the autograder running your notebook. You can look at this to debug your code
+* `autograder.out` : This will contain both the stdout and stderr from running the autograder. You can examine this if you run into bugs with the autograder.
+* `server.out` : This will contain the stdout and stderr from running your server code. You can examine this to debug your server code 
