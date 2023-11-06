@@ -163,7 +163,7 @@ def q10():
         raise Exception("Answer to question 10 not found")
     outputs = ANSWERS[10]
     output = nbutils.parse_float_output(outputs)
-    if not nbutils.is_accurate(0.88, output):
+    if not nbutils.is_accurate(0.86, output):
         return "Wrong answer"
 
 if __name__ == '__main__': 
