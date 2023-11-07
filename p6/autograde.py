@@ -5,6 +5,7 @@ import subprocess
 import concurrent.futures
 import json
 import threading
+import traceback
 
 
 def verify_files_present():
@@ -170,6 +171,7 @@ def init_runner(test_dir):
     results_file = os.path.join(output_path, "result.ipynb")
     while not os.path.exists(results_file):
         time.sleep(5)
+    print("Finished running notebook")
 
     # Copying the results back
     save_dir = os.path.join(test_dir, output_dir_name)
@@ -208,13 +210,18 @@ def init(*args, **kwargs):
         print(f"Executed notebook can be found at {expected_path}")
 
     # Read the json notebook
-    with open(expected_path, mode="r", encoding="utf-8") as reader:
-        notebook = json.load(reader)
+    try:
+        with open(expected_path, mode="r", encoding="utf-8") as reader:
+            notebook = json.load(reader)
 
-    if "cells" not in notebook:
-        raise Exception(f"Notebook at {expected_path} doesn't have any cells")
+        if "cells" not in notebook:
+            raise Exception(
+                f"Notebook at {expected_path} doesn't have any cells")
 
-    notebook_content = notebook["cells"]
+        notebook_content = notebook["cells"]
+    except Exception as e:
+        print(
+            f"Failed to read notebook at {expected_path} due to error {traceback.format_exc()}")
 
 
 def get_cell_containing_txt(target_txt):

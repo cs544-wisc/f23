@@ -88,25 +88,25 @@ def read_args():
 def main(cell_timeout=120):
     global output_dir_name
 
-    args = read_args()
-
     # Read the notebook
+    args = read_args()
     os.makedirs(output_dir_name, exist_ok=True)
-    notebook = nbformat.read(args.notebook_file, as_version=4)
-
-    # Create a preprocessor to execute those cells
-    notebook_executor = PartExecutor(
-        timeout=cell_timeout, kernel_name='python3', allow_errors=True)
-    notebook_executor.record_pause_points(args.pauses)
+    save_path = os.path.join(output_dir_name, "result.ipynb")
 
     try:
+        # Create a preprocessor to execute those cells
+        notebook = nbformat.read(args.notebook_file, as_version=4)
+        notebook_executor = PartExecutor(
+            timeout=cell_timeout, kernel_name='python3', allow_errors=True)
+        notebook_executor.record_pause_points(args.pauses)
         notebook_executor.preprocess(notebook)
+        nbformat.write(notebook, save_path)
     except Exception as e:
-        print("Failed to run notebook due to error", traceback.format_exc())
+        print(f"Failed to run notebook due to error {traceback.format_exc()}")
 
-    save_path = os.path.join(output_dir_name, "result.ipynb")
-    print("Writing result to file", save_path)
-    nbformat.write(notebook, save_path)
+        # Write an empty file so that autograder stops
+        with open(save_path, 'w+') as writer:
+            pass
 
 
 if __name__ == "__main__":
