@@ -9,6 +9,6 @@ wget https://raw.githubusercontent.com/cs544-wisc/f23/main/p6/nb/records.zip -O 
 wget https://raw.githubusercontent.com/cs544-wisc/f23/main/p6/nb/station.proto -O nb/station.proto
 
 wget https://raw.githubusercontent.com/cs544-wisc/f23/main/p6/autograde.py -O autograde.py
-wget https://raw.githubusercontent.com/cs544-wisc/f23/main/p6/docker_autograde.py -O docker_autograde.py
+wget https://raw.githubusercontent.com/cs544-wisc/f23/main/p6/pausable_nb_run.py -O pausable_nb_run.py
 
 wget https://raw.githubusercontent.com/cs544-wisc/f23/main/tester.py -O tester.py
