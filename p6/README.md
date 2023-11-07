@@ -30,7 +30,12 @@ Before starting, please review the [general project directions](../projects.md).
 ## Cluster Setup
 
 We have provided you with a `setup.sh` which will download and setup all the necessary files for this project. 
-Note that you might need to give `setup.sh` executable permission before running it.
+Note that you might need to give `setup.sh` executable permission before running it. You can do this using:
+```
+wget https://raw.githubusercontent.com/cs544-wisc/f23/main/p6/setup.sh -O setup.sh
+chmod u+x setup.sh
+./setup.sh
+```
 
 We provide the Dockerfile and docker-compose.yml for this project.
 You can run the following:

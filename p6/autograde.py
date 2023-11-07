@@ -30,7 +30,8 @@ def verify_files_present():
     missing_comments = required_comments - found_comments
     if len(missing_comments) > 0:
         raise Exception(
-            f"Couldn't find cells with comment(s) {missing_comments} in {notebook_file}")
+            f"Couldn't find cells with comment(s) {missing_comments} in {notebook_file}"
+        )
 
 
 def get_environment():
@@ -125,10 +126,9 @@ def init_runner(test_dir):
     # Copying the results back
     save_dir = os.path.join(test_dir, output_dir_name)
     os.makedirs(save_dir, exist_ok=True)
-    print("Save dir", save_dir)
 
     print("Copying the autograder run results into", save_dir)
-    time.sleep(10)
+    time.sleep(5)
     os.system(f"cp -rf {output_path}/. {save_dir}")
     os.system(f"rm -rf {save_dir}/*.record")
     os.system(f"rm -rf nb/docker_autograde.py")
