@@ -149,10 +149,6 @@ def tester_main():
         print("invalid path")
         return
     TEST_DIR = os.path.abspath(test_dir)
-    
-    start_dir = os.getcwd()
-    if CLEANUP:
-        CLEANUP()
 
     # make a copy of the code
     ignore = lambda _dir_name, _dir_content: [".git", ".github", "__pycache__", ".gitignore"]
@@ -161,7 +157,7 @@ def tester_main():
 
     # run init
     if INIT:
-        INIT(test_dir = TEST_DIR)
+        INIT()
 
     # run tests
     results = run_tests()
