@@ -1,6 +1,9 @@
 from collections import OrderedDict
-import json, argparse
-import os, traceback, shutil
+import json
+import argparse
+import os
+import traceback
+import shutil
 
 import multiprocessing
 
@@ -19,6 +22,8 @@ DEBUG = None
 GO_FOR_DEBUG = None
 
 # dataclass for storing test object info
+
+
 class _unit_test:
     def __init__(self, func, points, timeout, desc):
         self.func = func
@@ -52,17 +57,22 @@ def init(init_func):
 # test decorator
 def test(points, timeout=None, desc=""):
     def wrapper(test_func):
-        TESTS[test_func.__name__] = _unit_test(test_func, points, timeout, desc)
+        TESTS[test_func.__name__] = _unit_test(
+            test_func, points, timeout, desc)
 
     return wrapper
 
 # debug dir decorator
+
+
 def debug(debug_func):
     global DEBUG
     DEBUG = debug_func
     return debug_func
 
 # cleanup decorator
+
+
 def cleanup(cleanup_func):
     global CLEANUP
     CLEANUP = cleanup_func
@@ -114,7 +124,7 @@ def run_tests():
     if DEBUG and GO_FOR_DEBUG:
         DEBUG()
     # cleanup code after all tests run
-    shutil.rmtree(TMP_DIR)
+    shutil.rmtree(TMP_DIR, ignore_errors=True)
     return results
 
 
@@ -133,9 +143,11 @@ def tester_main():
     parser.add_argument(
         "-d", "--dir", type=str, default=".", help="path to your repository"
     )
-    parser.add_argument("-l", "--list", action="store_true", help="list all tests")
+    parser.add_argument("-l", "--list", action="store_true",
+                        help="list all tests")
     parser.add_argument("-v", "--verbose", action="store_true")
-    parser.add_argument("-g", "--debug", action="store_true", help="create a debug directory with the files used while testing")
+    parser.add_argument("-g", "--debug", action="store_true",
+                        help="create a debug directory with the files used while testing")
     args = parser.parse_args()
 
     if args.list:
@@ -151,8 +163,13 @@ def tester_main():
     TEST_DIR = os.path.abspath(test_dir)
 
     # make a copy of the code
-    ignore = lambda _dir_name, _dir_content: [".git", ".github", "__pycache__", ".gitignore"]
-    shutil.copytree(src=TEST_DIR, dst=TMP_DIR, dirs_exist_ok=True, ignore=ignore)
+    def ignore(_dir_name, _dir_content): return [
+        ".git", ".github", "__pycache__", ".gitignore", "*.pyc"]
+    shutil.copytree(src=TEST_DIR, dst=TMP_DIR,
+                    dirs_exist_ok=True, ignore=ignore)
+
+    if CLEANUP:
+        CLEANUP()
     os.chdir(TMP_DIR)
 
     # run init

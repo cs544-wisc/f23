@@ -79,10 +79,6 @@ def cell_pause_runner(output_path):
     expected_server_path = os.path.join("nb", "server.py")
     if os.path.exists(expected_server_path):
 
-        # Build the proto file before starting up the server
-        proto_build_cmd = f"docker exec -d -w /nb p6-db-1 sh -c \"python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. station.proto \" "
-        subprocess.run(proto_build_cmd, shell=True, env=environment)
-
         # Startup the server
         server_start_cmd = f"docker exec -d -w /nb p6-db-1 sh -c \"python3 -u server.py >> {output_dir_name}/server.out 2>&1 \" "
         subprocess.run(server_start_cmd, shell=True, env=environment)
@@ -145,6 +141,10 @@ def init_runner(test_dir):
 
     # Wait for the cluster to be initialized
     wait_for_all_three_up()
+
+    # Build the proto file before starting up the notebook
+    proto_build_cmd = f"docker exec -d -w /nb p6-db-1 sh -c \"python3 -m grpc_tools.protoc -I=. --python_out=. --grpc_python_out=. station.proto \" "
+    subprocess.run(proto_build_cmd, shell=True, env=environment)
 
     # Make all the notebooks writeable
     subprocess.check_output(
