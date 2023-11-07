@@ -63,7 +63,6 @@ class PartExecutor(ExecutePreprocessor):
                 while os.path.exists(pause_file_path):
                     time.sleep(1)
 
-                time.sleep(5)
                 print("File", pause_file_path, "has been removed")
 
         return return_value

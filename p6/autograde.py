@@ -38,7 +38,7 @@ def wait_for_all_three_up():
     command_to_run = "docker exec -it p6-db-1 nodetool status"
 
     while not all_three_up:
-        time.sleep(10)  # Wait a little bit
+        time.sleep(1)  # Wait a little bit
 
         # Read the result of nodetool status
         result = subprocess.run(
@@ -46,7 +46,6 @@ def wait_for_all_three_up():
 
         all_three_up = result.stdout.count("UN") >= 3
 
-    time.sleep(10)
     print("Cassandra cluster has started up")
 
 
@@ -56,7 +55,7 @@ def wait_for_one_dead():
     command_to_run = "docker exec -it p6-db-1 nodetool status"
 
     while not one_node_dead:
-        time.sleep(5)  # Wait a little bit
+        time.sleep(1)  # Wait a little bit
 
         # Read the result of nodetool status
         result = subprocess.run(
@@ -64,7 +63,6 @@ def wait_for_one_dead():
 
         one_node_dead = result.stdout.count("DN") >= 1
 
-    time.sleep(10)
     print("Detected a down cassandra node")
 
 
@@ -72,7 +70,7 @@ def cell_pause_runner(output_path):
     # Block till the docker_autograde requests the server to be run
     q4_cell_path = os.path.join(output_path, "q4.cell")
     while not os.path.exists(q4_cell_path):
-        time.sleep(5)
+        time.sleep(1)
     print("Blocking notebook execution to startup server")
 
     # Start up the server
@@ -83,7 +81,7 @@ def cell_pause_runner(output_path):
         # Startup the server
         server_start_cmd = f"docker exec -d -w /nb p6-db-1 sh -c \"python3 -u server.py >> {output_dir_name}/server.out 2>&1 \" "
         subprocess.run(server_start_cmd, shell=True, env=environment)
-        time.sleep(10)
+        time.sleep(5)
         print("Started up the server")
     else:
         print(
@@ -97,7 +95,7 @@ def cell_pause_runner(output_path):
     # Block till server requests to kill one of the nodes
     q7_cell_path = os.path.join(output_path, "q7.cell")
     while not os.path.exists(q7_cell_path):
-        time.sleep(5)
+        time.sleep(1)
 
     # Kill one of the nodes
     print("Blocking notebook execution to kill p6-db-2")
@@ -170,14 +168,13 @@ def init_runner(test_dir):
     # Wait for the result file
     results_file = os.path.join(output_path, "result.ipynb")
     while not os.path.exists(results_file):
-        time.sleep(5)
+        time.sleep(1)
     print("Finished running notebook")
 
     # Copying the results back
     save_dir = os.path.join(test_dir, output_dir_name)
     os.makedirs(save_dir, exist_ok=True)
 
-    time.sleep(5)
     os.system(f"cp -rf {output_path}/. {save_dir}")
     os.system(f"rm -rf {save_dir}/*.cell")
     os.system(f"rm -rf nb/pausable_nb_run.py")
