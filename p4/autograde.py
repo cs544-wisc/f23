@@ -10,11 +10,9 @@ import pandas as pd
 import sys
 from tester import init, test, tester_main, debug
 import traceback
+
 # key=num, val=answer (as string)
 ANSWERS = {}
-
-
-
 
 def run_command(command, timeout_val = None, throw_on_err = True, debug = False):
     command_to_run = command.split(" ")
@@ -243,7 +241,7 @@ def create_debug_dir():
     check_output(f"mkdir -p {target}&& cp nb/tester-p4a.ipynb {target} && cp nb/tester-p4b.ipynb {target}", shell=True)
 
 @init
-def init(verbose = False):
+def init(verbose = False, *args, **kwargs):
     run_student_code()
     extract_student_answers()
     

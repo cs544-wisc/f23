@@ -50,10 +50,6 @@ your browser.
 Create a notebook `p6.ipynb` in the `/nb` directory for your work.
 Use the same format for answers as in past projects (e.g., `#q1`).
 
-## Part 1: Station Data
-
-#### Schema Creation
-
 It generally takes around 1 to 2 minutes fro the Cassandra cluster to be ready. Write a cell like this:
 ```python3
 !nodetool status
@@ -74,7 +70,11 @@ UN  172.27.0.2  70.28 KiB  16      70.0%             8936a80e-c6b2-42ef-b54d-416
 If the cluster is not ready it will generally show an error. If this occurs then wait a little bit and rerun the command
 and keep doing so until you see that the cluster is ready. 
 
-Then connect to the Cassandra cluster using this code:
+## Part 1: Station Data
+
+#### Schema Creation
+
+Connect to the Cassandra cluster using this code:
 
 ```python
 from cassandra.cluster import Cluster
@@ -167,7 +167,7 @@ You can use
 to run `nodetool ring`. Then write some code to parse the output, loop
 over the ring and find the correct vnode.
 
-Handle the case where the ring "wraps around" (meaning the row token is bigger or smaller than any vnode).
+Handle the case where the ring "wraps around" (meaning the row token is bigger than any vnode).
 
 ## Part 2: Weather Data
 
@@ -205,9 +205,10 @@ accept writes whenever possible. **Host your server on port 5440**.
 Choose R so that R + W > RF.  We want to avoid a situation where a
 `StationMax` returns a smaller temperature than one previously added
 with `RecordTemps`; it would be better to return an error message if
-necessary. Note that `RecordTemps` has field 
+necessary.
 
-Launch your server in `p6-db-1` using the following command:
+Launch your server in the same container as your notebook.  There are
+multiple ways you could do this -- one option is with `docker exec`:
 
 ```
 docker exec -it p6-db-1 python3 /nb/server.py
@@ -307,10 +308,11 @@ You can use the `! COMMAND` technique to show the output in a cell.
 
 Choose any station you like for the call.
 
-#### Q10: if you make a `RecordTempsRequest` RPC call, what is the length of `error` in the `RecordTempsReply` reply?
+#### Q10: if you make a `RecordTempsRequest` RPC call, what does `error` contain in the `RecordTempsReply` reply?
 
-Make up some data (station, date, tmin and tmax).  Inserts should happen with `ConsistencyLevel.ONE`, so this ought to work, meaning that
-we except a string of length 0 in `error`.
+Make up some data (station, date, tmin and tmax).  Inserts should
+happen with `ConsistencyLevel.ONE`, so this ought to work, meaning the
+empty string is the expected result for `error`.
 
 ## Submission
 
@@ -332,10 +334,10 @@ We should also be able to open `http://localhost:5000/lab`, find your notebook, 
 
 We also be using an autograder to verify your solution which you can run yourself by running the following command in the `p6` directory:
 ```
-sudo python3 autograder.py
+python3 autograder.py
 ```
 
 This will create a `autograder_result` directory with the following content:
 * `result.ipynb` : This will contain the result of the autograder running your notebook. You can look at this to debug your code
 * `autograder.out` : This will contain both the stdout and stderr from running the autograder. You can examine this if you run into bugs with the autograder.
-* `server.out` : This will contain the stdout and stderr from running your server code. You can examine this to debug your server code 
+* `server.out` : This will contain the stdout and stderr from running your server code. You can examine this to debug your server code
