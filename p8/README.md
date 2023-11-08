@@ -4,13 +4,15 @@
 
 ## Note
 
+<!-- TODO [Critical]: Old Canvas Link. Replace?  -->
 This one is optional, but you can earn bonus credit by doing it (see https://canvas.wisc.edu/courses/345251/discussion_topics/1525284 for details).
 
-If you want us to grade you on P1-P7, fill this by the last day of
-class: https://forms.gle/KdjV9UCeWogpkNTD9.  This is a final
-decision, so even if you plan to do P7, I recommend waiting to fill
+<!--- TODO: New Form Link. Check. -->
+If you want us to grade you on P1-P8, fill this by the last day of
+class: https://forms.gle/F9BYASCkN5agbwZSA.  This is a final
+decision, so even if you plan to do P8, I recommend waiting to fill
 this until you are done (in case you change your mind).  If you don't
-fill the form (or say "no" on the form), we'll grade you on P1-P6.
+fill the form (or say "no" on the form), we'll grade you on P1-P7.
 
 ## Overview
 
@@ -30,6 +32,8 @@ Learning objectives:
 
 Before starting, please review the [general project directions](../projects.md).
 
+
+<!--- TODO: Keep this empty? -->
 ## Clarifications/Correction
 
 * Apr 28: fixed link to Google from
@@ -37,7 +41,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Setup
 
-You'll create and submit a `p7.ipynb` notebook.  You'll answer 10
+You'll create and submit a `p8.ipynb` notebook.  You'll answer 10
 questions in the notebook.  If the output of a cell answers question
 3, start the cell with a comment: `#q3`.  The autograder depends on
 this to correlate parts of your output with specific questions.
@@ -72,7 +76,7 @@ gcloud auth application-default revoke
 
 ## Notebook
 
-You can create a BigQuery client like this in your `p7.ipynb` (lookup
+You can create a BigQuery client like this in your `p8.ipynb` (lookup
 your project in the Google cloud console to replace `????`):
 
 ```python
@@ -159,8 +163,9 @@ Answer with dict where keys indentify which query, and values are the cost in do
 
 ## Part 2: HDMA Data (Parquet in GCS)
 
+<!-- Link Updated. Check! -->
 Download
-https://pages.cs.wisc.edu/~harter/cs639/data/hdma-wi-2021.parquet to
+https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.parquet to
 your laptop.  This is a subset of the data from the CSV in
 hdma-wi-2021.zip that we used in earlier projects.  We've done some
 cleanup and conversion work for you to make the parquet file -- [see
@@ -169,11 +174,11 @@ here](cleanup.md) if you're interested about what exactly we've done.
 Create a private GCS bucket (named whatever you like).  Upload the
 parquet file to your bucket.
 
-Write code to create a dataset called `p7` in your GCP project.  Use
+Write code to create a dataset called `p8` in your GCP project.  Use
 `exists_ok=True` so that you can re-run your code without errors.
 
 Use a `load_table_from_uri` call to load the parquet data into a new
-table called `hdma` inside your `p7` project.
+table called `hdma` inside your `p8` project.
 
 #### Q4: what are the datasets in your GCP project?
 
@@ -183,7 +188,7 @@ Use this line of code to answer:
 [ds.dataset_id for ds in bq.list_datasets("????")] # PASTE project name
 ```
 
-The output ought to contain the `p7` dataset.
+The output ought to contain the `p8` dataset.
 
 #### Q5: how many loan applications are there in the HDMA data for each county?
 
@@ -215,16 +220,19 @@ Now lets pretend you have a very lucrative data science job and want to buy a va
 2. how expensive of a house would you like to buy?
 3. where in WI would you like the house to be?  (use a tool like Google maps to identify exact latitude/longitude coordinates)
 
+<!--- TODO: New Form Link. Check. -->
 Apply for your loan in the Google form here:
-https://forms.gle/TsASt8AxHoW6g3Pj9.  Feel free to apply multiple
+https://forms.gle/nMizprMmaegQsTKi7.  Feel free to apply multiple
 times if a single vacation home is insufficient for your needs.
 
-The form is linked to this spreadsheet (check that your loan applications show up): https://drive.google.com/open?id=1e2qLPyxZ7s5ibMyEg7bxX2wWYAQD2ROAUcZuv8fqhnA
+<!--- TODO: New Sheet Link. Check. -->
+The form is linked to this spreadsheet (check that your loan applications show up): https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo
 
 Now run some code to add the sheet as an external BigQuery table:
 
+<!--- TODO: New Sheet Link. Check. -->
 ```python
-url = "https://drive.google.com/open?id=1e2qLPyxZ7s5ibMyEg7bxX2wWYAQD2ROAUcZuv8fqhnA"
+url = "https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo
 
 external_config = bigquery.ExternalConfig("GOOGLE_SHEETS")
 external_config.source_uris = [????]
@@ -283,7 +291,7 @@ for all the applications in the Google sheet.
 
 ## Grading:
 
-Run `autograder.py p7.ipynb` to estimate your grade.  In general, this
+Run `autograder.py p8.ipynb` to estimate your grade.  In general, this
 will be your grade unless there is a serious issue such as hardcoding
 or a code that isn't close but happens to produce a result in the
 acceptable range. Please reach out to Kalpit for any questions/suggestions.
@@ -293,12 +301,13 @@ acceptable range. Please reach out to Kalpit for any questions/suggestions.
 Check (and double check) that all the tests are passing when you
 submit.  Submission:
 
+<!--- TODO: New Form Link. Check. -->
 1. push to GitHub
-2. fill this form: https://forms.gle/KdjV9UCeWogpkNTD9
+2. fill this form: https://forms.gle/F9BYASCkN5agbwZSA
 
 The reason for having a separate form is that you shouldn't feel
 reluctant to push partial work to GitHub.  If you decide you don't
-want us to grade P7, just don't fill the form, and the partial work on
+want us to grade P8, just don't fill the form, and the partial work on
 GitHub won't hurt you.
 
 We should be able to open and run your notebook.  Note that your GCP
