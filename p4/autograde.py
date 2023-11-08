@@ -114,7 +114,11 @@ def run_student_code():
                 "python3 -m nbconvert --execute --to notebook " +
                 "nb/p4a.ipynb --output tester-p4a.ipynb'")
     print(cmd)
-    check_output(cmd, shell=True)
+    try:
+        check_output(cmd, shell=True)
+    except Exception as e:
+        print("An exception occurred while executing p4b.ipynb:", e)
+        traceback.print_exc()
 
     print("\n" + "="*70)
     print("Killing worker 1")
