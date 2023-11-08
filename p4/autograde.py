@@ -39,26 +39,31 @@ def run_command(command, timeout_val = None, throw_on_err = True, debug = False)
 def perform_startup(startup_timeout = 400, command_timeout = 20, bootup_buffer = 60, debug = False):
     docker_reset()
 
-    check_output("docker build . -f hdfs.Dockerfile -t p4-hdfs", shell=True)
-    check_output("docker build . -f namenode.Dockerfile -t p4-nn", shell=True)
-    check_output("docker build . -f datanode.Dockerfile -t p4-dn", shell=True)
-    check_output("docker build . -f notebook.Dockerfile -t p4-nb", shell=True)
+    try:
+        check_output("docker build . -f hdfs.Dockerfile -t p4-hdfs", shell=True)
+        check_output("docker build . -f namenode.Dockerfile -t p4-nn", shell=True)
+        check_output("docker build . -f datanode.Dockerfile -t p4-dn", shell=True)
+        check_output("docker build . -f notebook.Dockerfile -t p4-nb", shell=True)
 
-    # Start them using docker-compose up
-    if debug:
-        print("Starting all the containers")
-    std_out, _ = run_command("docker compose up -d", timeout_val = startup_timeout, debug = debug)
+        # Start them using docker-compose up
+        if debug:
+            print("Starting all the containers")
+        std_out, _ = run_command("docker compose up -d", timeout_val = startup_timeout, debug = debug)
 
-    # Get the notebook container
-    std_out, _ = run_command("docker ps", timeout_val = command_timeout)
-  
-    specs_df = pd.read_csv(StringIO(std_out), sep='\s{2,}', engine='python', header=0)
-    specs_df = specs_df[specs_df["PORTS"].str.contains("5000->5000")]
-    container_name = specs_df.iloc[0]["NAMES"]
-    if debug:
-        print("Got notebook container of", container_name)
+        # Get the notebook container
+        std_out, _ = run_command("docker ps", timeout_val = command_timeout)
+    
+        specs_df = pd.read_csv(StringIO(std_out), sep='\s{2,}', engine='python', header=0)
+        specs_df = specs_df[specs_df["PORTS"].str.contains("5000->5000")]
+        container_name = specs_df.iloc[0]["NAMES"]
+        if debug:
+            print("Got notebook container of", container_name)
 
-    return container_name
+        return container_name
+    except Exception as e:
+        print("An exception occurred while building their dockerfiles", e)
+        traceback.print_exc()
+        return "Error"
    
 
 def docker_reset():
