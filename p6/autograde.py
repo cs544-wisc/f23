@@ -353,20 +353,6 @@ def q5():
 
 
 @test(10)
-def q5():
-    # Extract the output
-    cell = get_cell_containing_txt("#q5")
-    if isinstance(cell, str):
-        return cell
-    output = extract_txt_from_cell(cell)
-
-    expected_txt = "356"
-    if expected_txt not in output:
-        return f"couldn't find txt {expected_txt} in output {output}"
-    return None
-
-
-@test(10)
 def q6():
     # Extract the output
     cell = get_cell_containing_txt("#q6")
