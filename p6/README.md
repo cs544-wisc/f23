@@ -337,5 +337,5 @@ python3 autograder.py
 
 This will create a `autograder_result` directory with the following content:
 * `result.ipynb` : This will contain the result of the autograder running your notebook. You can look at this to debug your code
-* `autograder.out` : This will contain both the stdout and stderr from running the autograder. You can examine this if you run into bugs with the autograder.
+* `nb_runner.out` : This will contain both the stdout and stderr from running the autograder. You can examine this if you run into bugs with the autograder.
 * `server.out` : This will contain the stdout and stderr from running your server code. You can examine this to debug your server code
