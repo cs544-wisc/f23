@@ -2,18 +2,6 @@
 
 # P8 (6% of grade): BigQuery, Loans Data
 
-## Note
-
-<!-- TODO [Critical]: Old Canvas Link. Replace?  -->
-This one is optional, but you can earn bonus credit by doing it (see https://canvas.wisc.edu/courses/345251/discussion_topics/1525284 for details).
-
-<!--- TODO: New Form Link. Check. -->
-If you want us to grade you on P1-P8, fill this by the last day of
-class: https://forms.gle/F9BYASCkN5agbwZSA.  This is a final
-decision, so even if you plan to do P8, I recommend waiting to fill
-this until you are done (in case you change your mind).  If you don't
-fill the form (or say "no" on the form), we'll grade you on P1-P7.
-
 ## Overview
 
 In this project, we'll (a) study the geography of loans in WI using
@@ -33,11 +21,9 @@ Learning objectives:
 Before starting, please review the [general project directions](../projects.md).
 
 
-<!--- TODO: Keep this empty? -->
 ## Clarifications/Correction
 
-* Apr 28: fixed link to Google from
-* May 2: edited pip install directions to match lecture (though the previous packages listed are sufficient for this particular project)
+* None
 
 ## Setup
 
@@ -54,13 +40,18 @@ pip3 install google-cloud-bigquery google-cloud-bigquery-storage pyarrow tqdm ip
 
 You'll also need to give your VM permission to access BigQuery and
 Google Drive.  You can do so by pasting the following into the
-terminal on your VM and following the directions:
+terminal on your VM and following the directions. Please read the following cautions before running this command.
 
 ```
 gcloud auth application-default login --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive.readonly
 ```
 
-**Be careful, because if a malicous party were to gain access to your
+### :warning: Caution
+
+1. While running the command, it will ask you to paste some link to your browser. If you have multiple Google accounts in your browser, and do not want this to select the default one, then do the following: 
+    * paste the link in a incognito mode
+    * login to the Google account of your choice
+2. Be careful, because if a malicous party were to gain access to your
 VM, they would have free access to all your Google Drive files (and
 more).  For example, if your Jupyter is listening publicly (i.e.,
 0.0.0.0 instead of localhost) and you have a weak password (or no
@@ -76,24 +67,35 @@ gcloud auth application-default revoke
 
 ## Notebook
 
-You can create a BigQuery client like this in your `p8.ipynb` (lookup
-your project in the Google cloud console to replace `????`):
+Clone your project-8 repo from Github to your VM. Inside your VM's repository folder, run the following command:
+
+```
+python3 -m jupyterlab --no-browser --ip=localhost --port=5000 --allow-root --NotebookApp.token=''
+```
+
+Then, create a notebook named `p8.ipynb`. This is only file we need from you.
+
+You can create a BigQuery client like this in your `p8.ipynb` (lookup your project in the Google cloud console to replace `????`):
+
+<!-- TODO: Make this ???? more clear. -->
+<!-- TODO: Strictly one cell for this. So we can change easily? -->
 
 ```python
 from google.cloud import bigquery
 bq = bigquery.Client(project="????")
 ```
 
-You can do queries and get results in Pandas DataFrames like this:
+You can do queries and get results in Pandas DataFrames like this (more on this later):
 
 ```python
-q = bq.query("""
-????
+q = bq.query(
+"""
+--- your query here ---
 """)
 q.to_dataframe()
 ```
 
-Add comments in the cells that answer each question.  For example, Q1 should look like this:
+Add comments in the cells that answer each question. Make sure your answers are in cell output - not print statements. For example, Q1 should look like this:
 
 ```python
 #q1
@@ -129,7 +131,30 @@ The counties dataset contains some regions that are not
 technically counties (though we will treat them as such for this
 project).
 
-#### Q1: what is the `geo_id` for Dane county?  (note that Madison is in Dane county).
+#### Test your setup
+
+Run the following in your notebook:
+
+```python
+q = bq.query(
+"""
+select count(*) as num_rows 
+from bigquery-public-data.geo_us_boundaries.counties
+""")
+q.to_dataframe()
+```
+
+It should show something like this:
+
+|     | num_rows |
+| ---:| -------: |
+| 0   |     3233 |
+
+Now let's answer some questions.
+
+#### Q1: what is the `geo_id` for Dane county? (note that Madison is in Dane county). 
+
+The output should be a string.
 
 #### Q2: how many counties are there per state?
 
@@ -298,20 +323,17 @@ acceptable range. Please reach out to Kalpit for any questions/suggestions.
 
 ## Submission
 
-Check (and double check) that all the tests are passing when you
-submit.  Submission:
-
-<!--- TODO: New Form Link. Check. -->
-1. push to GitHub
-2. fill this form: https://forms.gle/F9BYASCkN5agbwZSA
-
-The reason for having a separate form is that you shouldn't feel
-reluctant to push partial work to GitHub.  If you decide you don't
-want us to grade P8, just don't fill the form, and the partial work on
-GitHub won't hurt you.
+Check (and double check :monocle_face:) that all the tests are passing when you submit. Then, add, commit and push to Github.
 
 We should be able to open and run your notebook.  Note that your GCP
 project name and GCP bucket name are probably different than ours.
 It's OK to hardcode names specific to your account in your notebook
 and assume that anybody else that wants to run it will tweak the code
 accordingly.
+
+## Post-Submission
+
+Do not forget to revoke the permission to access your Google drive. Run the following command in your VM.
+```
+gcloud auth application-default revoke
+```
