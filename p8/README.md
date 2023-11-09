@@ -191,11 +191,12 @@ Answer with dict where keys indentify which query, and values are the cost in do
 <!-- Link Updated. Check! -->
 Download
 https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.parquet to
-your laptop.  This is a subset of the data from the CSV in
+your VM.  This is a subset of the data from the CSV in
 hdma-wi-2021.zip that we used in earlier projects.  We've done some
 cleanup and conversion work for you to make the parquet file -- [see
 here](cleanup.md) if you're interested about what exactly we've done.
 
+<!-- TODO: should we specify a name? -->
 Create a private GCS bucket (named whatever you like).  Upload the
 parquet file to your bucket.
 
