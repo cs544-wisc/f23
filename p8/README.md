@@ -254,11 +254,11 @@ times if a single vacation home is insufficient for your needs.
 <!--- TODO: New Sheet Link. Check. -->
 The form is linked to this spreadsheet (check that your loan applications show up): https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo
 
-Now run some code to add the sheet as an external BigQuery table:
+Now run some code to add the sheet as an external BigQuery table. The name of the table must be `applications`
 
 <!--- TODO: New Sheet Link. Check. -->
 ```python
-url = "https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo
+url = "https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo"
 
 external_config = bigquery.ExternalConfig("GOOGLE_SHEETS")
 external_config.source_uris = [????]
@@ -317,10 +317,15 @@ for all the applications in the Google sheet.
 
 ## Grading:
 
-Run `autograder.py p8.ipynb` to estimate your grade.  In general, this
+```bash
+python3 autograder.py
+```
+
+Run the command above to estimate your grade.  In general, this
 will be your grade unless there is a serious issue such as hardcoding
 or a code that isn't close but happens to produce a result in the
-acceptable range. Please reach out to Kalpit for any questions/suggestions.
+acceptable range. 
+<!-- Please reach out to Kalpit for any questions/suggestions. -->
 
 ## Submission
 
