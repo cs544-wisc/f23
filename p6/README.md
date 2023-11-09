@@ -1,5 +1,3 @@
-# DRAFT!  Don't start yet.
-
 # P6 (6% of grade): Cassandra, Weather Data
 
 ## Overview
