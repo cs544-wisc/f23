@@ -300,7 +300,8 @@ Use Spark to compute the answer, and convert to `dict` for your output, like thi
 
 #### Q8: what does `nodetool status` output?
 
-You can use the `! COMMAND` technique to show the output in a cell.
+You can use the `! COMMAND` technique to show the output in a cell. Verify that you see that one of the nodes is down
+before proceeding to the next steps. 
 
 #### Q9: if you make a `StationMax` RPC call, what does the `error` field contain in `StationMaxReply` reply?
 
