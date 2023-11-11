@@ -148,6 +148,8 @@ def tester_main():
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-g", "--debug", action="store_true",
                         help="create a debug directory with the files used while testing")
+    parser.add_argument("-e", "--existing", default=None,
+                        help="run the autograder on an existing notebook")
     args = parser.parse_args()
 
     if args.list:
@@ -168,18 +170,19 @@ def tester_main():
     shutil.copytree(src=TEST_DIR, dst=TMP_DIR,
                     dirs_exist_ok=True, ignore=ignore)
 
-    if CLEANUP:
+    if args.existing is None and CLEANUP:
         CLEANUP()
+
     os.chdir(TMP_DIR)
 
     # run init
     if INIT:
-        INIT()
+        INIT(existing_file=args.existing)
 
     # run tests
     results = run_tests()
     save_results(results)
 
     # run cleanup
-    if CLEANUP:
+    if args.existing is None and CLEANUP:
         CLEANUP()

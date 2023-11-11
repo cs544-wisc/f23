@@ -23,7 +23,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Corrections/Clarifications
 
-* none yet
+* November 10th: Added in `--existing` flag
 
 ## Cluster Setup
 
@@ -340,3 +340,11 @@ This will create a `autograder_result` directory with the following content:
 * `result.ipynb` : This will contain the result of the autograder running your notebook. You can look at this to debug your code
 * `nb_runner.out` : This will contain both the stdout and stderr from running the autograder. You can examine this if you run into bugs with the autograder.
 * `server.out` : This will contain the stdout and stderr from running your server code. You can examine this to debug your server code
+
+Note that this will shutdown any existing cluster, restart it and re execute the entire notebook. This will take a while so if you want to run the solution
+on your existing notebook without recreating existing cluster and rerunning the entire notebook then you can use the `--existing` flag like this:
+```
+python3 autograder.py --existing <path_to_existing_file>
+```
+
+Note that when grading your solution, we will be running `python3 autograder.py` but the above option is to enable faster development. 
