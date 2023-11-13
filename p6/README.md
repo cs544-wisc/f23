@@ -24,6 +24,7 @@ Before starting, please review the [general project directions](../projects.md).
 ## Corrections/Clarifications
 
 * November 10th: Added in `--existing` flag
+* November 13th: Added in clarification about the file structure
 
 ## Cluster Setup
 
@@ -328,6 +329,24 @@ docker exec -it p6-db-1 python3 /nb/server.py
 ```
 
 We should also be able to open `http://localhost:5000/lab`, find your notebook, and run it.
+
+Verify that your submission repo has a structure similar to this and should contain at least the specified files.
+It can have additional files but it should definetly contain the files shown below:
+
+```
+.
+├── Dockerfile
+├── autograde.py
+├── cassandra.sh
+├── docker-compose.yml
+├── nb
+│   ├── p6.ipynb
+│   ├── server.py
+│   ├── station.proto
+├── pausable_nb_run.py
+├── setup.sh
+└── tester.py
+```
 
 ## Testing:
 
