@@ -208,13 +208,6 @@ with `RecordTemps`; it would be better to return an error message if
 necessary. Use [register_user_type](https://docs.datastax.com/en/drivers/python/3.2/user_defined_types.html)
 to insert the station record data into the database. 
 
-Launch your server in the same container as your notebook.  There are
-multiple ways you could do this -- one option is with `docker exec`:
-
-```
-docker exec -it p6-db-1 python3 /nb/server.py
-```
-
 #### Error Handling
 
 Note that `RecordTempsReply` and `StationMaxReply` both have a string
@@ -241,6 +234,16 @@ Sometimes `cassandra.Unavailable` is wrapped inside a
 
 For other errors/exceptions, you can decide what the `error` message
 should be (we recommend choosing something that will help you debug).
+
+#### Running the server
+
+Launch your server in the same container as your notebook.  There are
+multiple ways you could do this -- one option is to run `docker exec`
+from your VM, using a command like this:
+
+```
+docker exec -it p6-db-1 python3 /nb/server.py
+```
 
 #### Data Upload
 
