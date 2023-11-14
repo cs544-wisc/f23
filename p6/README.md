@@ -25,6 +25,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 * November 10th: Added in `--existing` flag
 * November 13th: Added in clarification about the file structure
+* November 14th: Added in link about UDFs
 
 ## Cluster Setup
 
@@ -204,7 +205,8 @@ accept writes whenever possible. **Host your server on port 5440**.
 Choose R so that R + W > RF.  We want to avoid a situation where a
 `StationMax` returns a smaller temperature than one previously added
 with `RecordTemps`; it would be better to return an error message if
-necessary.
+necessary. Use [register_user_type](https://docs.datastax.com/en/drivers/python/3.2/user_defined_types.html)
+to insert the station record data into the database. 
 
 Launch your server in the same container as your notebook.  There are
 multiple ways you could do this -- one option is with `docker exec`:
