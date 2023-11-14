@@ -25,6 +25,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 * November 10th: Added in `--existing` flag
 * November 13th: Added in clarification about the file structure
+* November 14th: Fix q10 to account for single quoute strings
 
 ## Cluster Setup
 
