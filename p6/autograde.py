@@ -477,7 +477,7 @@ def q10():
     output = extract_txt_from_cell(cell, read_stdout=False)
     cleaned_output = "".join([s for s in output if s.isalnum()]).strip()
     if len(cleaned_output) > 0:
-        return f"Expected empty err msg but got output of length {len(cleaned_output)}"
+        return f"Expected empty err msg but got output of length {len(output)}"
     return None
 
 
