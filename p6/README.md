@@ -191,6 +191,8 @@ Each call should use a prepared statement to insert or access data in
 `weather.stations`.  It could be something like this:
 
 ```python
+from cassandra import ConsistencyLevel
+
 insert_statement = cass.prepare("????")
 insert_statement.consistency_level = ConsistencyLevel.ONE
 max_statement = cass.prepare("????")
@@ -205,14 +207,8 @@ accept writes whenever possible. **Host your server on port 5440**.
 Choose R so that R + W > RF.  We want to avoid a situation where a
 `StationMax` returns a smaller temperature than one previously added
 with `RecordTemps`; it would be better to return an error message if
-necessary.
-
-Launch your server in the same container as your notebook.  There are
-multiple ways you could do this -- one option is with `docker exec`:
-
-```
-docker exec -it p6-db-1 python3 /nb/server.py
-```
+necessary. Use [register_user_type](https://docs.datastax.com/en/drivers/python/3.2/user_defined_types.html)
+to insert the station record data into the database. 
 
 #### Error Handling
 
@@ -241,17 +237,28 @@ Sometimes `cassandra.Unavailable` is wrapped inside a
 For other errors/exceptions, you can decide what the `error` message
 should be (we recommend choosing something that will help you debug).
 
+#### Running the server
+
+Launch your server in the same container as your notebook.  There are
+multiple ways you could do this -- one option is to run `docker exec`
+from your VM, using a command like this:
+
+```
+docker exec -it p6-db-1 python3 /nb/server.py
+```
+
 #### Data Upload
 
-Unzip `records.zip` to get `records.parquet`.  In your `p6.ipnynb`
-notebook, use Spark to load this and re-arrange the data so that there
+Now in your `p6.ipynb`, unzip `records.zip` to get a `records.parquet` directory. 
+Then use Spark to load this and re-arrange the data so that there
 is (a) one row per station/date combination, and (b) tmin and tmax
 columns.  You can ignore other measurements.
 
 Collect and loop over the results, making a call to the server with
 for each row to insert the measurements to the database.
 
-Change number types and date formats as necessary.
+Change number types and date formats as necessary. Note that CQL requires that
+you insert date data in `yyyy-mm-dd` format
 
 #### Q5: what is the max temperature ever seen for station USW00014837?
 
