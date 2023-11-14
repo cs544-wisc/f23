@@ -191,6 +191,8 @@ Each call should use a prepared statement to insert or access data in
 `weather.stations`.  It could be something like this:
 
 ```python
+from cassandra import ConsistencyLevel
+
 insert_statement = cass.prepare("????")
 insert_statement.consistency_level = ConsistencyLevel.ONE
 max_statement = cass.prepare("????")
