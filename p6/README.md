@@ -257,7 +257,8 @@ columns.  You can ignore other measurements.
 Collect and loop over the results, making a call to the server with
 for each row to insert the measurements to the database.
 
-Change number types and date formats as necessary.
+Change number types and date formats as necessary. Note that CQL requires that
+you insert date data in `yyyy-mm-dd` format
 
 #### Q5: what is the max temperature ever seen for station USW00014837?
 
