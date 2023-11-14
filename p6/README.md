@@ -249,8 +249,8 @@ docker exec -it p6-db-1 python3 /nb/server.py
 
 #### Data Upload
 
-Unzip `records.zip` to get `records.parquet`.  In your `p6.ipnynb`
-notebook, use Spark to load this and re-arrange the data so that there
+Now in your `p6.ipynb`, unzip `records.zip` to get a `records.parquet` directory. 
+Then use Spark to load this and re-arrange the data so that there
 is (a) one row per station/date combination, and (b) tmin and tmax
 columns.  You can ignore other measurements.
 
