@@ -208,7 +208,7 @@ accept writes whenever possible. **Host your server on port 5440**.
 Choose R so that R + W > RF.  We want to avoid a situation where a
 `StationMax` returns a smaller temperature than one previously added
 with `RecordTemps`; it would be better to return an error message if
-necessary. Use [register_user_type](https://docs.datastax.com/en/drivers/python/3.2/user_defined_types.html)
+necessary. HINT: You could use [register_user_type](https://docs.datastax.com/en/drivers/python/3.2/user_defined_types.html)
 to insert the station record data into the database. 
 
 #### Error Handling
@@ -253,7 +253,7 @@ docker exec -it p6-db-1 python3 /nb/server.py
 Now in your `p6.ipynb`, unzip `records.zip` to get a `records.parquet` directory. 
 Then use Spark to load this and re-arrange the data so that there
 is (a) one row per station/date combination, and (b) tmin and tmax
-columns. You can ignore other measurements. The [pivot](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.GroupedData.pivot.html) 
+columns. You can ignore other measurements. HINT: The [pivot](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.GroupedData.pivot.html) 
 function in PySpark might be useful to rearrange the data.
 
 Collect and loop over the results, making a call to the server with
