@@ -26,6 +26,7 @@ Before starting, please review the [general project directions](../projects.md).
 * November 10th: Added in `--existing` flag
 * November 13th: Added in clarification about the file structure
 * November 14th: Fix q10 to account for single quoute strings
+* November 15th: Added hint about using pivot
 
 ## Cluster Setup
 
@@ -252,7 +253,8 @@ docker exec -it p6-db-1 python3 /nb/server.py
 Now in your `p6.ipynb`, unzip `records.zip` to get a `records.parquet` directory. 
 Then use Spark to load this and re-arrange the data so that there
 is (a) one row per station/date combination, and (b) tmin and tmax
-columns.  You can ignore other measurements.
+columns. You can ignore other measurements. The [pivot](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.GroupedData.pivot.html) 
+function in PySpark might be useful to rearrange the data.
 
 Collect and loop over the results, making a call to the server with
 for each row to insert the measurements to the database.
