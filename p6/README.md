@@ -362,7 +362,7 @@ It can have additional files but it should definetly contain the files shown bel
 
 We also be using an autograder to verify your solution which you can run yourself by running the following command in the `p6` directory:
 ```
-python3 autograder.py
+python3 autograde.py
 ```
 
 This will create a `autograder_result` directory with the following content:
@@ -373,7 +373,7 @@ This will create a `autograder_result` directory with the following content:
 Note that this will shutdown any existing cluster, restart it and re execute the entire notebook. This will take a while so if you want to run the solution
 on your existing notebook without recreating existing cluster and rerunning the entire notebook then you can use the `--existing` flag like this:
 ```
-python3 autograder.py --existing <path_to_existing_file>
+python3 autograde.py --existing <path_to_existing_file>
 ```
 
-Note that when grading your solution, we will be running `python3 autograder.py` but the above option is to enable faster development. 
+Note that when grading your solution, we will be running `python3 autograde.py` but the above option is to enable faster development. 
