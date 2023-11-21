@@ -55,6 +55,8 @@ def restart_kafka():
                 "p7-autograder-kafka",
                 "-p",
                 "9092:9092",
+                "-e",
+                "AUTOGRADER_DELAY_OVERRIDE_VAL=0.01",
                 "-d",
                 "p7-autograder-build",
             ],
@@ -172,13 +174,12 @@ def _cleanup(*args, **kwargs):
     log("Cleaning up: Stopping all existing containers and temp files")
     subprocess.call("docker kill p7-autograder-kafka", shell=True)
     subprocess.call("docker rm p7-autograder-kafka", shell=True)
-    # delete_temp_dir()
+    delete_temp_dir()
 
 
 @init
 def init(*args, **kwargs):
     create_temp_dir()
-    pass
 
 
 # Test all required files present
@@ -227,15 +228,19 @@ def test_p7_image_runs():
     log("Running Test: running P7 container...")
     restart_kafka()
 
+# Test kafka boots up
+@test(1)
+def test_kafka_boots_up():
+    log("Running Test: check kafka boots up...")
+    try:
+        wait_for_kafka_to_be_up()
+    except Exception as e:
+        return "Kafka container did not start: " + str(e)
 
 # Test producer: check all topics created
 @test(1)
 def test_topics_created():
     log("Running Test: check producer creates all topics...")
-    try:
-        wait_for_kafka_to_be_up()
-    except Exception as e:
-        return "Kafka container did not start: " + str(e)
 
     try:
         run_producer()
