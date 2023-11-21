@@ -365,7 +365,7 @@ while True:
     print("Refreshed Graph")
 ```
 
-![Yearly trends plot](./monthly-trend.png?raw=true "Yearly trends plot for January")
+![Yearly trends plot](./yearly_trends.png "Yearly trends plot for January")
 
 ### Atomic File Writes
 
