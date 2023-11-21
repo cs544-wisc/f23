@@ -6,7 +6,7 @@
 
 For this project, imagine a scenario where you are receiving daily
 weather data for a given location. Your task is to populate this data
-into a Kafka stream using a *Producer* Python program. A *Consumer*
+into a Kafka stream using a *producer* Python program. A *consumer*
 Python program consumes data from the stream to produce JSON files
 with summary stats, for use on a web dashboard (you don't need to
 build the dashboard yourself). Later in the project, the consumer
@@ -32,86 +32,128 @@ Before starting, please review the [general project directions](../projects.md).
 ## Clarifications/Correction
 * none yet
 
-## Part 1: Kafka Producer
+## Container setup
 
-### Container setup
 Start by creating a `files` directory in your repository. Your Python programs and generated files must be stored in this directory.
 Next, build a `p7` docker image with Kafka installed using the provided Dockerfile.
-Run the Kafka broker in the background using: `docker run -d -v ./files:/files p7`
+Run the Kafka broker in the background using:
 
-To setup the producer and consumer, create two Python programs 
-named `producer.py` and `consumer.py` within `files`. To run the producer and consumer program, use: `docker exec -it <container_name> python3 <path_of_program>`. 
-This will run the program in the foreground, making it easier to debug. 
-
-### Weather data generator
-Using the provided `weather.py` file, you can infinitely generate daily weather data starting from 1990-01-01 for a specific location (loosely modelled around weather of Dane County). Copy `weather.py` to your `files` directory and try generating some data using the following code snippet. This will generate the weather at an accelarated rate of 1 day per 0.5 second:
-
-```python
-import weather
-
-# Runs infinitely because the weather never ends
-for data in weather.get_next_weather(delay_sec=0.5):
-    print(data) # date, max_temperature
 ```
-Note: The above snippet is just for testing, don't include it in your submission
+docker run -d -v ./files:/files --name=p7 p7
+```
 
-### Writing to Kafka Streams
-Now paste the following in `producer.py` to create two streams.
-One of them (`temperatures`) with 4 partitions and a replication factor of 1 and the other 
-one (`birthday-temperatures`) with 1 partition and a replication factor of 1.
+You'll be creating three programs, `producer.py`, `debug.py`, and
+`consumer.py`.  You can launch these in the container like this:
+`docker exec -it p7 python3 /files/<path_of_program>`.  This will run
+the program in the foreground, making it easier to debug.
+
+All the programs you write for this projects will run forever, or
+until manually killed.
+
+## Part 1: Kafka Producer
+
+### Topic Initialization
+
+Create a `producer.py` that creates a `temperatures` topic with 4
+partitions and 1 replica.  If the topic already existed, it should
+first be deleted.
+
+Feel free to use/adapt the following:
 
 ```python
 from kafka import KafkaAdminClient
 from kafka.admin import NewTopic
 from kafka.errors import UnknownTopicOrPartitionError
 
-broker_url = '???'
-admin_client = KafkaAdminClient(bootstrap_servers=[broker_url])
+broker = 'localhost:9092'
+admin_client = KafkaAdminClient(bootstrap_servers=[broker])
 
 try:
-    admin_client.delete_topics(["temperatures", "birthday-temperatures"])
+    admin_client.delete_topics(["temperatures"])
     print("Deleted topics successfully")
 except UnknownTopicOrPartitionError:
     print("Cannot delete topic/s (may not exist yet)")
 
 time.sleep(3) # Deletion sometimes takes a while to reflect
 
-# Create the topics
 temperatures_topic = NewTopic(name="temperatures", num_partitions=4, replication_factor=1)
-bday_temperatures_topic = NewTopic(name="birthday-temperatures", num_partitions=1, replication_factor=1)
-admin_client.create_topics([temperatures_topic, bday_temperatures_topic])
+admin_client.create_topics([temperatures_topic])
 
 print("Topics:", admin_client.list_topics())
 ```
 
-You will be writing a produce method to fetch weather data using `get_next_weather` method and push it to the `temperatures` topic in Kafka. 
-The data sent by your producer to Kafka must be in a protobuf format.
+### Weather Generation
 
-To start, create a protobuf file `report.proto` in `files` with a `Report` message having the following entries, and build it to get a `???_pb2.py` file:
+Using the provided `weather.py` file, you can infinitely generate
+daily weather data starting from 1990-01-01 for a specific location
+(loosely modelled around weather of Dane County). Copy `weather.py` to
+your `files` directory and try generating some data using the
+ufollowing code snippet. This will generate the weather at an
+accelarated rate of 1 day per 0.5 second:
+
+```python
+import weather
+
+# Runs infinitely because the weather never ends
+for date, degrees in weather.get_next_weather(delay_sec=0.5):
+    print(date, degrees) # date, max_temperature
+```
+
+Note: The above snippet is just for testing, don't include it in your submission.
+
+Instead of printing the weather, create a KafkaProducer to send the
+reports to the `temperatures` topic.
+
+For the value format, use protobufs.  To start, create a protobuf file
+`report.proto` in `files` with a `Report` message having the following
+entries, and build it to get a `???_pb2.py` file (review P3 for how to
+do this if necessary):
 
 * string **date** (format "YYYY-MM-DD") - Date of the observation
 * double **degrees**: Observed max-temperature on this date
 
-Within the produce method, loop over the values returned by the `get_next_weather` function (which keeps returning values infinitely), and sends out the data to the `temperatures` stream. You can use the following code as a starting point:
-
-```python
-def produce():
-    producer = KafkaProducer(bootstrap_servers=[???], ????)
-    
-    for row in weather.get_next_weather(delay_sec=1):
-        # TODO: send to "temperatures" stream using protobuf
-
-# TODO: start thread to run produce
-# never join produce thread because we want it to run forever
-```
-
-### Other requirements
+### Requirements
 1. Use a setting so that the producer retries up to 10 times when `send` requests fail
 2. Use a setting so that the producer's `send` calls are not acknowledged until all in-sync replicas have received the data
 3. When publishing to the `temperatures` stream, use the string representation of the month ('January', 'February', ...) as the message's `key`
 4. Use a `.SerializeToString()` call to convert a protobuf object to bytes (not a string, despite the name)
 
-## Part 2: Kafka Consumer
+### Running in Background
+
+When your producer is finished, consider running it in the background indefinitely:
+
+```
+docker exec -d p7 python3 /files/producer.py
+```
+
+## Part 2: Kafka Debug Consumer
+
+Create a `debug.py` program that initializes a KafkaConsumer.  It
+could be in a consumer group named "debug".
+
+The consumer should subscribe to the "temperatures" topic; let the
+broker automatically assign the partitions.
+
+The consumer should NOT seek to the beginning.  The consumer should
+loop over messages forever, printing dictionaries corresponding to
+each message, like the following:
+
+```
+...
+{'partition': 2, 'key': 'December', 'date': '2000-12-26', 'degrees': 31.5235}
+{'partition': 2, 'key': 'December', 'date': '2000-12-27', 'degrees': 35.5621}
+{'partition': 2, 'key': 'December', 'date': '2000-12-28', 'degrees': 4.6093}
+{'partition': 2, 'key': 'December', 'date': '2000-12-29', 'degrees': 26.3698}
+{'partition': 2, 'key': 'December', 'date': '2000-12-30', 'degrees': 41.9125}
+{'partition': 2, 'key': 'December', 'date': '2000-12-31', 'degrees': 46.1511}
+{'partition': 2, 'key': 'January', 'date': '2001-01-01', 'degrees': 40.391}
+...
+```
+
+Use your `debug.py` to verify your producer is writing to the stream
+as expected.
+
+## Part 3: Kafka Stats Consumer
 
 Next, you will run 2 consumer threads to process the data from the
 `temperatures` stream.  These consumers will generate JSON files
@@ -283,55 +325,6 @@ To avoid **overcounting**:
 * when a consumer updates a JSON file, it must record the current read offset in the file (you can get this with `consumer.position(???)`)
 * when a new consumer starts, it must start reading from the last offset (you can do this with `consumer.seek(????)`)
 * when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the `end` entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write. So retry could produce duplicates in the stream. To highlight this, the weather generation function has a 5% chance of generating a duplicated value, so keep this in mind. Other than these duplicated entries, you may assume all other messages are generated in order.
-
-## Part 3: Another Producer & Consumer (birthday-temperatures)
-
-### Publish birthday temperatures
-For this part, we want our consumers to identify weather data on a specific date (your birthday) and send this information to another Kafka topic `birthday-temperatures` (which we have already created in Part 1). Notice that this
-topic only has a single partition for simplicity. With this, our consumer will
-act like a producer, sending out messages to the `birthday-temperatures` topic.
-
-Update your existing `consume` function by creating a KafkaProducer within it (for producing birthday weather messages). For this producer, use the same `acks` and `retries` configurations as in the existing producer. Withing the existing `consume` method, identify weather records that fall on your birthday 
-(match the month and day of the month from the messages with your birthday). If you find such a message, publish a corresponding entry to the `birthday-temperatures` topic. 
-
-To simplify things, instead of using a protobuf format for this new message, encode the message as a string as described below:
-```python
-# Message format: YEAR,DEGREES e.g. "2012,25.5"
-message_as_bytes = bytes(f"{year_of_msg},{proto_data.degrees}", 'utf-8')
-# Publish 'message_as_bytes' to 'birthday-temperatures'
-```
-
-### Consume birthday temperatures
-We now have a stream of messages being written to the `birthday-temperatures` topic by the `consume` method. We need a new consumer to read these messages! 
-
-Write a new consumer that **subscribes** to the `birthday-temperatures` topic (use automatic assignment instead of manual assignment) and collects the temperatures on your birthday across different years.  
-
-Here is some code to assist with setting this section up:
-
-```python
-def consume_birthday_data():
-    bday_consumer = ???
-    bday_consumer.subscribe([???])
-    
-    # Run infinitely
-    while True:
-        batch = bday_consumer.poll(1000)
-        for topic, messages in batch.items():
-            for message in messages:
-                # TODO: Decode the message and store it somewhere
-
-# TODO: Run 'consume_birthday_data' in a thread so it keeps running in background
-```
-
-Store the date collected by this new consumer in a single `birthday.json` file with the following format:
-```json
-{
-  "birthday": "1997-10-02",
-  "1990": 25.4,
-  "1991": 25.6
-}
-``` 
-The "birthday" key stores your birthday (YYYY-MM-DD) and there is one key per year from which the weather data was captured. Each year maps to the corresponding temperature (the temperature from that year on your birthday). Make sure to use the `save_dict_to_json` function for saving the contents.
 
 ## Part 4: Visualizing Yearly Trends
 
