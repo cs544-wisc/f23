@@ -1,183 +1,196 @@
 # DRAFT!  Don't start yet.
 
-# P7 (6% of grade): Kafka and Spark Streaming, Weather Data
+# P7 (6% of grade): Kafka, Weather Data
 
 ## Overview
 
-For this project, imagine a scenario where many weather stations are
-sending daily records to a Kafka stream.  A regular Python program
-consumes the stream to produce JSON files with summary stats for each
-station, for use on a web dashboard (you don't need to build the
+For this project, imagine a scenario where you are receiving daily weather
+data for a given location. Your task is to populate this
+data into a Kafka stream using a `producer` Python script. Another Python 
+program (the `consumer`) consumes the stream to produce JSON files with 
+summary stats, for use on a web dashboard (you don't need to build the
 dashboard yourself).  A Spark streaming job also consumes the streams
 to generate datasets for machine learning (the goal being to predict
 weather).  Spark is also used to train models on this data.
 
-In this scenario, many computers would be involved (different
-stations, many Kafka brokers, etc).  For simplicity, we'll use a
-single Kafka broker.  A single producer will generate data for all
-stations at an accelerated rate (1 day per second).  Finally,
-consumers will be different threads, launching from the same notebook.
+For simplicity, we'll use a single Kafka broker instead of using a cluster. 
+A single producer will generate the weather data in an infinite loop at an accelerated rate (1 day per second).  Finally, consumers will be different 
+threads, launching from the same Python script.
 
 Learning objectives:
 * write code for Kafka producers
 * write code for Kafka consumers
 * apply streaming techniques to achive "exactly once" semantics
-* use Spark streaming to consumer and transform data from Kafka
-* use Spark to train models
+* write to different Kafka topics
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
 
-* Apr 15: fix docker-compose.yml example
-
 ## Part 1: Kafka Producer
 
-Using Docker compose, launch a cluster with Jupyter, HDFS, Spark, and
-Kafka. Here are some files that could help: [Container Setup
-Files](./containers.md).
+### Container setup
+Start by creating a `p7` docker image with Kafka installed using the provided [Dockerfile](./.Dockerfile).
+Launch a container for the `p7` image that runs the single Kafka broker. 
 
-Start two notebooks called `kafka.ipynb` (parts 1 and 2) and
-`spark.ipynb` (parts 3 and 4) inside the "notebooks" directory within
-the "app" container.
+Next, to setup the producer and consumer, create two Python scripts 
+called `producer.py` and `consumer.py`. Place both scripts in a `files` directory within your repository.
 
-Paste some [helper code](weather.md) that generates random weather for a
-given number of stations (it's not completely random -- there are
-seasonal and day-to-day patterns unique to each station).
+Run the Kafka broker in the background using `docker run -d -v ./files:/files p7`. 
+To run the producer and consumer script, use `docker exec -it <container_id> python3 <path_of_script>`. 
+This runs the script in the foreground making it easier to debug. 
 
-Try getting data from it to see how it works:
+### Weather data generator
+Using the provided `weather.py` file, you can endlessly generate daily weather data starting from 1-Jan-1990 for a specific location (loosely modelled around the weather of Dane County). Copy `weather.py` to your files directory and se the following snippet of code to generate the weather at an accelarated rate of 1 day per second within your producer:
+
 
 ```python
-# loops forever because the weather never ends...
-for row in all_stations(3):
-    print(row) # date, station, temp, raining
+import weather
+
+# Runs infinitely because the weather never ends
+for data in weather.get_next_weather():
+    print(data) # date, max_temperature
 ```
 
-Now paste the following to create two streams, each with 6 partitions and a replication factor of 1:
+### Writing to Kafka Streams
+Now paste the following to create two streams.
+One of them (`temperatures`) with 4 partitions and a replication factor of 1 and the other 
+one (`birthday-temperatures`) with 1 partition and a replication factor of 1
 
 ```python
-from kafka import KafkaAdminClient, KafkaProducer, KafkaConsumer, TopicPartition
+from kafka import KafkaAdminClient
 from kafka.admin import NewTopic
-from kafka.errors import TopicAlreadyExistsError, UnknownTopicOrPartitionError
+from kafka.errors import UnknownTopicOrPartitionError
 
-admin = KafkaAdminClient(bootstrap_servers=["kafka:9092"])
+broker_url = '???'
+admin_client = KafkaAdminClient(bootstrap_servers=[broker_url])
+
 try:
-    admin.delete_topics(["stations", "stations-json"])
-    print("deleted")
+    admin_client.delete_topics(["temperatures", "birthday-temperatures"])
+    print("Deleted topics successfully")
 except UnknownTopicOrPartitionError:
-    print("cannot delete (may not exist yet)")
+    print("Cannot delete topic/s (may not exist yet)")
 
-time.sleep(1)
-admin.create_topics([NewTopic("stations", 6, 1)])
-admin.create_topics([NewTopic("stations-json", 6, 1)])
-admin.list_topics()
+time.sleep(3) # Deletion sometimes takes a while to reflect
+
+# Create the topics
+temperatures_topic = NewTopic(name="temperatures", num_partitions=4, replication_factor=1)
+bday_temperatures_topic = NewTopic(name="birthday-temperatures", num_partitions=1, replication_factor=1)
+admin_client.create_topics([temperatures_topic, bday_temperatures_topic])
 ```
 
-You'll write a produce to send the same data to both streams, but the first will be in protobuf format and the second will be in JSON.
+To start, you'll write a produce method to fetch weather data using `get_max_temperatures()` and it to the `temperatures` topic in Kafka. 
+The data sent by your producer to Kafka must be in a protobuf format.
 
-Create a protobuf file with a `Report` message having the following entries, and build it to get a ???_pb2.py file:
+Create a protobuf file `report.proto` with a `Report` message having the following entries, and build it to get a `???_pb2.py` file:
 
-* string date (format "YYYY-MM-DD")
-* string station
-* double degrees
-* bool raining
+* string date (format "YYYY-MM-DD") (Date of the observation)
+* double degrees (Observed max-temperature on this date)
 
-The JSON format will similarly have four keys -- the biggest difference is that we'll use ints (1 or 0) instead of a boolean to indicate rain:
-
-* "date" (format should be "YYYY-MM-DD")
-* "station"
-* "degrees"
-* "raining" (use 1 for raining or 0 for not raining)
-
-Note that JSON supports Booleans too, but we're using an int to make a
-later part where we do machine learning easier.
-
-Write a function that loops forever over the weather for 15 stations,
-sending the data to the two streams.  You could use this for a starter:
+Write a function in the produce method that loops **forever** over the values
+returned by the `get_max_temperatures()` function, and send out the data to the `temperatures` stream.  You could use this for a starter:
 
 ```python
 def produce():
-    producer = KafkaProducer(bootstrap_servers=["kafka:9092"], ????)
+    producer = KafkaProducer(bootstrap_servers=[???], ????)
     
-    for date, station, degrees, raining in all_stations(15):
-        # TODO: send to "stations" stream using protobuf
-        # TODO: send to "stations-json" using JSON
+    for row in get_max_temperatures():
+        # TODO: send to "temperatures" stream using protobuf
 
 # TODO: start thread to run produce
 # never join thread because we want it to run forever
 ```
 
+Note: Make sure to compile the proto file before running your producer script.
 
-Other requirements:
+### Other requirements
 1. producer: use a setting so that the producer retries up to 10 times when `send` requests fail
 2. producer: use a setting so that `send` calls are not acknowledged until all in-sync replicas have received the data
-3. stations stream: use a `.SerializeToString()` call to convert a protobuf object to bytes (not a string, despite the name)
-4. stations-json stream: use `json.dumps` to convert a dict to a string and `bytes(???, "utf-8")` to convert a string to bytes
-5. both streams: use a `key=` argument when sending data.  The key should be a byte representation of the station name
+3. temperatures stream: use the string representation of the month ('January', 'February', ...) as the `key` when sending out messages to Kafka.
+4. temperatures stream: use a `.SerializeToString()` call to convert a protobuf object to bytes (not a string, despite the name)
 
-## Part 2: Kafka Consumer
+## Part 2: Kafka Consumer (temperatures)
 
-Now, you'll run 3 consumer threads to process the data from the
-"stations" stream.  These consumers will generate JSON files
-summarizing temperature data for the stations.
+Now, you'll run 2 consumer threads to process the data from the
+"temperatures" stream.  These consumers will generate JSON files
+summarizing temperature data for different months. Write the consumer code in a separate Python script called `consumer.py`
 
 Overview:
-* there are 15 stations but only 6 partitions, so naturally some partitions will correspond to multiple stations
-* there are 6 partitions and only 3 consumer threads, so each thread will consumer exactly 2 partitions (you'll manually assign this as partitions 0+1 for the first thread, 2+3 for the second, and 4+5 for the third)
-* each partition will correspond to one file named "partition-N.json" (where N is the partition number)
-* the above point means each thread will be in charge of keeping two JSON files updated
+* there are 12 months but only 4 partitions, so naturally some partitions will correspond to data corresponding to multiple months
+* there are 4 partitions and only 2 consumer threads, so each thread should consume exactly 2 partitions. Manually assign partitions 0 and 1 for the first thread, and 
+partitions 2 and 3 for the second.
+* each partition will correspond to one file named `partition-N.json` (where N is the partition number). 
+* the above point means each thread will be in charge of keeping two JSON files updated with the monthly weather summaries
 
 This is an example of a JSON file corresponding to partition 2 (due to several factors you'll probably never see this exact data):
 
-```python
+```json
 {
-  "F": {
-    "avg": 31.047916671797324,
-    "count": 136,
-    "end": "2000-05-15",
-    "start": "2000-01-01",
-    "sum": 4222.516667364436
+  "partition": 2,
+  "offset": 4117,
+
+  "January": {
+    "1990": {
+      "count": 31,
+      "sum": 599,
+      "avg": 19.322580645161292,
+      "end": "1990-01-31",
+      "start": "1990-01-01"
+    },
+    "1991": {
+      "count": 31,
+      "sum": 178,
+      "avg": 5.741935483870968,
+      "end": "1991-01-31",
+      "start": "1991-01-01"
+    }
   },
-  "I": {
-    "avg": 24.628561218065123,
-    "count": 136,
-    "end": "2000-05-15",
-    "start": "2000-01-01",
-    "sum": 3349.4843256568565
-  },
-  "J": {
-    "avg": 54.70145603439249,
-    "count": 136,
-    "end": "2000-05-15",
-    "start": "2000-01-01",
-    "sum": 7439.3980206773795
-  },
-  "offset": 408,
-  "partition": 2
+
+  "April": {
+    "1990": {
+      "count": 30,
+      "sum": 1113,
+      "avg": 37.1,
+      "end": "1990-04-30",
+      "start": "1990-04-01"
+    },
+    "1991": {
+      "count": 30,
+      "sum": 1149,
+      "avg": 38.3,
+      "end": "1991-04-30",
+      "start": "1991-04-01"
+    }
+  }
 }
 ```
 
-The dict in the JSON file should have the following keys at the top level:
-* "partition": the partition number in the `stations` stream, from which the stats were computed
-* "offset": the partition offset to which the consumer read to produce this file
-* stations: a key for each station in the partition (in this case, stations "F", "I", and "J")
+The dict in the JSON file should have the following keys at the top/outermost level:
 
-Each station key has a corresponding dict value with the following entries:
-* "sum": sum of temperatures seen so far (yes, this is an odd metric by itself)
-* "count": the number of temperatures seen so far
-* "avg": the sum/count.  This is the only reason we record the sum -- so we can recompute the average on a running basis without having to remember and loop over all temperatures each time the file is updated
-* "start": the date of the first measurement ("YYYY-MM-DD")
-* "end": the date of the most recent measurement ("YYYY-MM-DD")
+* `partition`: the partition number in the temperatures stream, from which the stats were computed
+* `offset`: the partition offset to which the consumer read to produce this file
+* one key for each month in the partition (in this case, months "January" and "April") (let's call this the month-key)
 
-Paste the following cell in your notebook so that everytime we re-run
-the notebook, we'll be starting from the same situation (no prior JSON
+Each month-key ("January", "April", etc.) maps to another set of keys representing different years. For each year within a month, there's a collection of data that summarizes the weather for that month in that specific year. For a given year, this summary includes:
+
+* `count`: The number of days in the month for which data is available.
+* `sum`: sum of temperatures seen so far (yes, this is an odd metric by itself)
+* avg: the sum/count. This is the only reason we record the sum -- so we can recompute the average on a running basis without having to remember and loop over all temperatures each time the file is updated
+* `start`: the date of the *first* measurement for the corresponding
+month and year combination
+* `end`: the date of the *last* measurement for the corresponding
+month and year combination
+
+For example, under "January" for the year "1990", the count is 31 (indicating data for all 31 days of January), the sum is 599, the avg is approximately 19.32, and the data collection period is from "1990-01-01" to "1990-01-31". This pattern repeats for each month and year combination in the dataset.
+
+Paste the following cell in your script so that everytime we re-run the script, we'll be starting from the same situation (no prior JSON
 files).
 
 ```python
 import os, json
 
-for partition in range(6):
-    path = f"partition-{partition}.json"
+for partition_num in range(???):
+    path = f"partition-{partition_num}.json"
     if os.path.exists(path):
         os.remove(path)
 ```
@@ -193,67 +206,70 @@ def load_partition(partition_num):
     else:
         return { ???? }
 
-def save_partition(partition):
-    path = f"partition-{partition['partition']}.json"
-    with open(path, "w") as file:
-        json.dump(partition, file)
+def atomic_save_partition_file(partition_dict):
+    ???
+    json.dump(partition_dict, file)
+    ???
 ```
 
 You can use the following starter code for your consumers:
 
 ```python
-def consume(part_nums=[], iterations=10):
+def consume(part_nums=[], max_iterations):
     consumer = ????
     # TODO: create list of TopicPartition objects
     consumer.assign(????)
 
     # PART 1: initialization
-    partitions = {} # key=partition num, value=snapshot dict
+    
+    # key=partition num, value=snapshot dict
+    partitions = {} 
+
     # TODO: load partitions from JSON files (if they exist) or create fresh dicts
     # TODO: if offsets were specified in previous JSON files, the consumer
     #       should seek to those; else, seek to offset 0.
 
     # PART 2: process batches
-    for i in range(iterations):
+    iteration_count = 0
+    while iteration_count < max_iterations:
         batch = consumer.poll(1000) # 1s timeout
         for topic, messages in batch.items():
             # perhaps create a separate function for the following?  You decide.
             # TODO: update the partitions based on new messages
             # TODO: save the data back to the JSON file
+        if max_iterations is not None: iteration_count += 1
     print("exiting")
 
 for i in range(2):
-    print("ROUND", i)
-    t1 = threading.Thread(target=consume, args=([0,1], 30))
-    t2 = threading.Thread(target=consume, args=([2,3], 30))
-    t3 = threading.Thread(target=consume, args=([4,5], 30))
-    t1.start()
-    t2.start()
-    t3.start()
-    t1.join()
-    t2.join()
-    t3.join()
+    print("Running round: ", i)
+    consumer_of_0_1 = Thread(target=consume, args=([0,1], 30))
+    consumer_of_2_3 = Thread(target=consume, args=([???,???], 30))
+    
+    # TODO: Start all consumer threads
+    
+    # TODO: Wait for all consumers to complete
 ```
 
-Note that instead of `for i in range(iterations)`, you would
-typically have an infinite loop (like `while True`).  For the sake of
-assigment simplicity, we just iterate 30 times (so you don't need to
-keep restarting your whole notebook to kill+restart the consumer
-threads after code changes).
+Note that instead of when the `max_iterations` variable of the consume method is None, the consumer runs infinitely. However, if a numeric value is passed, the consumer only runs for the specified number of iterations, you would
+typically have an infinite loop (like `while True`).
 
-Note that we do two rounds of the 30 iterations.  The point here is
-to practice writing your consumers so that if they die and get
-restarted, the new consumers can pickup where the previous ones left
+Now we will perform **two rounds** running the consumer. In the first round, the consumers run a total of 30 iterations and then stop. In the next round, we run the consumers without any limit on the number of iteration (so `max_iterations` is None). The point here is to practice writing your consumers so that if they die and get restarted, the new consumers can pickup where the previous ones left
 off, while avoiding both these problems:
 
 * missing some messages
 * double counting some messages
 
-At the end, put the following in a cell so we can see the snapshots
-produced by the consumers:
+Your code for running these two rounds would look like this:
+```python3
+# Round 1: Run consumers for 30 iterations
+# Create thread to run consumer 1 for 30 iterations
+# Create thread to run consumer 2 for 30 iterations
+# Run both consumer threads (parallelly)
+# Wait for both consumer threads to complete (simulates consumers dying)
 
-```
-!cat partition*.json
+# Round 2: Run consumers for infinite iterations
+# Same as round 1, except no limit on iterations
+# Do not join these threads, let them run infinitely in the background
 ```
 
 ### Required: Exactly-Once Kafka Messages
@@ -268,23 +284,84 @@ To avoid **undercounting**:
 To avoid **overcounting**:
 * when a consumer updates a JSON file, it must record the current read offset in the file (you can get this with `consumer.position(???)`)
 * when a new consumer starts, it must start reading from the last offset (you can do this with `consumer.seek(????)`)
-* when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the "end" entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write.  So retry could produce duplicates in the stream
+* when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the "end" entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write.  So retry could produce duplicates in the stream. The weather generation function has a 5% chance of returning a duplicated value, so keep this in mind. Other than these duplicated messages, you may assume all other messages are generated in order.
 
-### Optional: Atomic File Writes
+## Part 4: Another Producer & Consumer (birthday-temperatures)
+
+### Publish birthday temperatures
+For this part, we want our consumers to identify weather data on a specific date (your birthday) and send this information to another Kafka topic `birthday-temperatures` (which we have already created in Part 1). Notice that this
+topic only has a single partition for simplicity. With this, our consumer will
+act like a producer, sending out messages to the `birthday-temperatures` topic.
+
+Within your consumer code, create a KafkaProducer with the same `acks` and `retries` configurations as in the previous producer. When the consumer identifies weather records that fall on your birthday 
+(match the month and day of the month from the messages with your birthday), publish the a message to the `birthday-temperatures` topic. To simplify things, instead of using a protobuf format for the message, encode the message as a string as described below:
+```python
+# Message format: YEAR,DEGREES e.g. "1997,25.5"
+message_as_bytes = bytes(f"{year_of_msg},{proto_data.degrees}", 'utf-8')
+```
+
+### Consume birthday temperatures
+Write a new consumer that subscribes to the `birthday-temperatures` topic (use automatic assignment instead of manual assignment) and collects the temperatures on your birthday across different years.  
+
+Here is some code to assist with setting this section up
+
+```python
+def consume_birthday_data():
+    consumer = ???
+    consumer.subscribe([???])
+    
+    # Run infinitely
+    while True:
+        batch = consumer.poll(1000)
+        for topic, messages in batch.items():
+            for message in messages:
+                # Decode the message and store it somewhere
+```
+
+Store the date collected by this consumer in a `birthday.json` file with the following format:
+```json
+{
+  "birthday": "1997-10-02",
+  "1990": 25.4,
+  "1991": 25.6
+}
+``` 
+The "birthday" key should store your birthday and there should be one key per year from which the weather data was captured.
+Each year should be mapped to the corresponding temperature (the temperature from that year on your birthday).
+
+## Part 4: Visualizing Yearly Trends
+
+### Yearly Trend for January
+In this part, we will visualize the weather summary, for a given month stored, in the partition json files. Read the partition files to identify which JSON file contains weather data for the month of **January**. For this month, plot a bar chart with its x-axis representing the different years for which weather summary data exists, and the y-axis representing the average temperature for each year. Since data is continuously flowing in, your plot will keep getting outdated and would need refreshing. Use the below structure to re-generate the plot every 30 seconds to reflect the updated data on the plot:
+
+```python
+while True:
+  sleep(30) # Wait 30 seconds for updated data
+  # TODO: Plot the bar chart
+  
+  # Save the plot
+  plt.savefig('./yearly_trend.png')
+
+  # Clear the plot data for the next iteration
+  plt.clf()
+
+```
+
+![Yearly trends plot](./monthly-trend.png?raw=true "Yearly trends plot")
+
+### Atomic File Writes
 
 Remember that we're producing the JSON files so somebody else (not
-you) can use them to build a web dashboard.  What if the dashboard app
-tries to read the JSON file at the same time your consumer is updating
+you) can use them to build a web dashboard. We are also using the JSON files to continously plot graphs. What if the dashboard app or the graph generation script tries to read the JSON file at the same time your consumer is updating
 the file?  It's possible the dashboard app could read an
 incomprehensible mix of old and new data.
 
-You are NOT required to handle this situation for this project.
-However, if you want to do it right, the proper technique is to write
+To prevent such partial writes, the proper technique is to write
 a new version of the data to a different file.  For example, say the
-original file is "F.txt" -- you might write the new version to
-"F.txt.tmp".  After the new data has been completely written, you can
+original file is `F.txt` -- you might write the new version to
+`F.txt.tmp`.  After the new data has been completely written, you can
 rename F.txt.tmp to F.txt.  This atomically replaces the file
-contents.  Anybody trying to read it will see all old data or all new
+contents. Anybody trying to read it will see all old data or all new
 data.
 
 ```python
@@ -301,280 +378,27 @@ for the new file might only have been buffered in memory, not yet
 written to the storage device.  Feel free to read about `fsync` if
 you're curious about this scenario.
 
-## Part 3: Spark Streaming
-
-Remember that part 3 and 4 are in a new notebook, `spark.ipynb`.  It
-is important that you leave `kafka.ipynb` running during this work,
-though.
-
-Start a local Spark session and read from Kafka stream like this:
-
-```python
-from pyspark.sql import SparkSession
-spark = (SparkSession.builder.appName("cs544")
-         .config("spark.sql.shuffle.partitions", 10)
-         .config("spark.ui.showConsoleProgress", False)
-         .config('spark.jars.packages', 'org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.2')
-         .getOrCreate())
-
-df = (
-    spark.readStream.format("kafka")
-    .option("kafka.bootstrap.servers", "kafka:9092")
-    .option("subscribe", "stations-json")
-    .option("startingOffsets", "earliest")
-    .load()
-)
-```
-
-Note that we're disabling the progress bar.  While usually convenient,
-we'll have streams running indefinitely in the background, and we
-don't want constant output to Jupyter.
-
-Use a `spark.readStream` to load the `stations-json` stream to a DataFrame.  Tips:
-
-* the `value` comments will contain the bytes you wrote.  You can use `col(????).cast("string")` to convert bytes to a string (this assumes UTF-8 encoding)
-* you can convert a JSON string to a structure using `from_json(????, schema)`.  The schema needs to specify the types.  It will be something like `schema = "station STRING, date DATE, ..."` for you.
-* if a column named "value" is a struct, you can access an entry named "station" inside with "value.station"
-
-Requirements
-* use `.option("startingOffsets","earliest")` to begin with the earliest data
-
-## Stats
-
-Write some Spark code to compute the following stats per station:
-* station name
-* date of first measurement
-* date of most recent measurement
-* number of measurements
-* average temperature so far
-* max temperature so far
-
-Stream these stats to the console every 5 seconds for a total of 30 seconds.  You can use this starter code:
-
-```python
-counts_df = ????
-s = counts_df.writeStream.format("console").trigger(processingTime="5 seconds").outputMode("complete").start()
-s.awaitTermination(30)
-s.stop()
-```
-
-The output should be something like this:
-
-```
--------------------------------------------
-Batch: 0
--------------------------------------------
-+-------+----------+----------+------------+------------------+----------+
-|station|     start|       end|measurements|               avg|       max|
-+-------+----------+----------+------------+------------------+----------+
-|      A|2000-01-01|2014-01-28|        5142| 53.42402521596634| 107.04456|
-|      B|2000-01-01|2014-01-28|        5142| 43.03918192489779|  95.67471|
-|      C|2000-01-01|2014-01-28|        5142| 70.89881298654231| 124.12265|
-|      D|2000-01-01|2014-01-28|        5142| 60.29500058855541| 113.63003|
-|      E|2000-01-01|2014-01-28|        5142| 46.85979942859048| 99.760445|
-|      F|2000-01-01|2014-01-28|        5142| 47.59281675032445|101.321434|
-|      G|2000-01-01|2014-01-28|        5142| 53.65835544906299| 101.97021|
-|      H|2000-01-01|2014-01-28|        5142|54.311930299616655| 107.25877|
-|      I|2000-01-01|2014-01-28|        5142| 42.97768542515161|  93.09192|
-|      J|2000-01-01|2014-01-28|        5142| 66.41689743211138| 118.97069|
-|      K|2000-01-01|2014-01-28|        5142|46.335176925261464|  97.18328|
-|      L|2000-01-01|2014-01-28|        5142| 63.15448890980558| 114.59742|
-|      M|2000-01-01|2014-01-28|        5142| 46.84981537639272| 96.246735|
-|      N|2000-01-01|2014-01-28|        5142| 51.53710830749858| 108.87489|
-|      O|2000-01-01|2014-01-28|        5142| 50.86705852595228| 111.03256|
-+-------+----------+----------+------------+------------------+----------+
-
--------------------------------------------
-Batch: 1
--------------------------------------------
-...
-```
-
-As long as a few batches print out, don't worry if you see this "WARN ProcessingTimeExecutor: Current batch is falling behind. The trigger interval is ???? milliseconds, but spent ???? milliseconds".  Feel free to increase above 30 seconds if you aren't getting a couple batches.  Errors about tasks/batches aborting at the end is fine (the `s.stop()` call triggered this).
-
-## Rain Forecast Dataset
-
-Now lets generate some data so we can train a model (in part 4) to predict rain.
-
-Define DataFrames named `today` and `features` that look like this:
-* `DataFrame[station: string, date: date, raining: int]`
-* `DataFrame[station: string, date: date, month: int, sub1degrees: float, sub1raining: int, sub2degrees: float, sub2raining: int]`
-
-In `today`, the raining column will be 1 if there was rain at the given station on the given day.
-
-In `features`, the `month` is 1-12 and is extracted from the `date`,
-but the other columns indicate weather conditions prior to the date.
-For example, sub1degrees indicates the temperature 1 day before the
-date.  sub2raining indicates whether it was raining 2 days before the
-date.
-
-You can use `date_add("value.date", ????).alias("date")` to move the
-date forward (so that weather conditions are in the past relative to
-the date).  It's probably easiest to construct `features` by creating
-and joining two other DataFrames: one for yesterday and one for two
-days ago.
-
-Join `today` with `features` on the `date` and `station` columns, and
-stream all the columns of the results to parquet files (you choose the
-name).  Requirements:
-
-* repartition the stream so there is only 1 partition
-* trigger it every 1 minutes
-
-These configurations are so that we only produce 1 parquet file per
-minute (too many very small parquet files makes the next part slow).
-
-## Part 4: Spark ML
-
-## Training and Evaluation
-
-Wait about a minute until at least one parquet file is produced.
-
-Do some imports:
-
-```python
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.classification import DecisionTreeClassifier
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-```
-
-Read your parquet files from part 3 (depending on how long it has been
-running, you may have more or less data -- this is OK).
-
-Use the VectorAssembler to combine the feature columns ("month",
-"sub1degrees", "sub1raining", "sub2degrees", "sub2raining") into a
-single column.
-
-Split your data into train and test.
-
-```python
-train_data, test_data = data.randomSplit([0.8, 0.2], seed=??)
-```
-
-Train a `DecisionTreeClassifier` on your training data to predict
-raining based on the features.
-
-```python
-dt_classifier = DecisionTreeClassifier(??)
-dt_model = dt_classifier.fit(train_data)
-```
-
-Print the decision tree with `toDebugString` -- something like this:
-
-```
-DecisionTreeClassificationModel: uid=DecisionTreeClassifier_bbd99682b231, depth=5, numNodes=17, numClasses=2, numFeatures=5
-  If (feature 2 <= 0.5)
-   Predict: 0.0
-  Else (feature 2 > 0.5)
-   If (feature 1 <= 39.70075035095215)
-    If (feature 1 <= 34.9547119140625)
-     If (feature 0 <= 2.5)
-      If (feature 3 <= 45.0179557800293)
-       Predict: 0.0
-      Else (feature 3 > 45.0179557800293)
-       Predict: 1.0
-     Else (feature 0 > 2.5)
-      Predict: 0.0
-    Else (feature 1 > 34.9547119140625)
-     If (feature 0 <= 11.5)
-      If (feature 0 <= 2.5)
-       Predict: 0.0
-      Else (feature 0 > 2.5)
-       Predict: 1.0
-     Else (feature 0 > 11.5)
-      If (feature 3 <= 45.0179557800293)
-       Predict: 0.0
-      Else (feature 3 > 45.0179557800293)
-       Predict: 1.0
-   Else (feature 1 > 39.70075035095215)
-    Predict: 1.0
-```
-
-Use the model to make predictions on the test data.  What is the
-*accuracy* (percent of times the model is correct)?  What percent of
-the time is is raining?  You might print these numbers in the
-following way, or feel free to choose your own format:
-
-```python
-predictions = dt_model.transform(test_data)
-
-evaluator = MulticlassClassificationEvaluator(??)
-accuracy = evaluator.evaluate(predictions)
-```
-
-```
-+------------------+------------------+
-|      avg(correct)|      avg(raining)|
-+------------------+------------------+
-|0.8127599577017977|0.3017624250969334|
-+------------------+------------------+
-```
-
-In this example, it rains 30% of the time, so a model could easily be
-correct 70% of the time (by always predicting no rain).  Apparently
-this model is bit better (81% correct).
-
-## Model Deployment
-
-Remember the `features` DataFrame stream you defined in part 3?  Use
-`features` as a source and apply your model to stream weather
-predictions to the screen.  Something like this:
-
-```
-...
--------------------------------------------
-Batch: 2
--------------------------------------------
-+-------+----------+----------+
-|station|      date|prediction|
-+-------+----------+----------+
-|      A|2021-11-13|       0.0|
-|      A|2021-11-11|       0.0|
-|      A|2021-11-10|       1.0|
-|      A|2021-11-12|       0.0|
-|      A|2021-11-17|       1.0|
-|      A|2021-11-15|       1.0|
-|      A|2021-11-16|       1.0|
-|      A|2021-11-14|       0.0|
-+-------+----------+----------+
-...
-```
-
-Note that since we're artificially generating a day's worth of weather
-every second, the predictions are struggling to keep up.  A few days
-pass before we share our predictions -- too late to be useful even if
-it's correct!  We'll ignore this problem for the assignment (if
-weather weren't being simulated at an accelerated rate, it wouldn't be
-a problem).
-
-Stop your notebook/stream after a few batches and save it.
-
 ## Submission
+All your code and generated files (partition json files and graphs) should be in a directory named `files` within your repository.
 
-We should be able to run the following on your submission to create the mini cluster:
+We should be able to run the following on your submission to build and run the required image:
 
 ```
-docker build -t p6 ./image
-docker compose up -d
+# To build the image
+docker build . -t p7
+
+# To run the kafka broker
+docker run -d -v ./files:/files p7
+
+# To run the producer script
+docker exec -it <container_id> python3 /files/producer.py`
+# To run the consumer script
+docker exec -it <container_id> python3 /files/consumer.py`
 ```
 
-We should be able to open Jupyter on the VM at localhost:5000 and find
-and run your kafka.ipynb and spark.ipynb files in the notebooks
-directory.
+# Testing
+We also be using an autograder to verify your solution which you can run yourself by running the following command in the p7 directory:
 
-## Approximate Rubric:
-
-The following is approximately how we will grade, but we may make
-changes if we overlooked an important part of the specification or did
-not consider a common mistake.
-
-1. [x/1] The Dockerfile and docker-compose.yml setup the cluster (part 1)
-2. [x/1] The producer writes correctly formatted/serialized messages to both the `stations` and `stations-json` streams (part 1)
-3. [x/1] The producer does its part to achieve exactly-once semantics (part 1)
-4. [x/1] The consumer threads produce JSON files with the correct format (part 2)
-5. [x/1] The consumer threads produce JSON files with the correct content, based on consumed messages (part 2)
-6. [x/1] The consumer does its part to achieve exactly-once semantics -- double check consintency of start/end dates and count (part 2)
-7. [x/1] The counts are correctly streamed to the console (part 3)
-8. [x/1] The forecast training data is correctly streamed to parquet files (part 3)
-9. [x/1] The model is correctly trained on training data and evaluated on test data (part 4)
-10. [x/1] The model is used to stream predictions for station A to the console (part 4)
+```
+python3 autograde.py
+```
