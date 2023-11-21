@@ -174,12 +174,13 @@ def _cleanup(*args, **kwargs):
     log("Cleaning up: Stopping all existing containers and temp files")
     subprocess.call("docker kill p7-autograder-kafka", shell=True)
     subprocess.call("docker rm p7-autograder-kafka", shell=True)
-    delete_temp_dir()
+    # delete_temp_dir()
 
 
 @init
 def init(*args, **kwargs):
     create_temp_dir()
+    pass
 
 
 # Test all required files present
@@ -228,19 +229,15 @@ def test_p7_image_runs():
     log("Running Test: running P7 container...")
     restart_kafka()
 
-# Test kafka boots up
-@test(1)
-def test_kafka_boots_up():
-    log("Running Test: check kafka boots up...")
-    try:
-        wait_for_kafka_to_be_up()
-    except Exception as e:
-        return "Kafka container did not start: " + str(e)
 
 # Test producer: check all topics created
 @test(1)
 def test_topics_created():
     log("Running Test: check producer creates all topics...")
+    try:
+        wait_for_kafka_to_be_up()
+    except Exception as e:
+        return "Kafka container did not start: " + str(e)
 
     try:
         run_producer()
@@ -358,7 +355,8 @@ def test_consumer_runs():
     # Delete parition files inside the container
     for _ in range(10):
         try:
-            run_in_docker("p7-autograder-kafka", "rm -rf /files/partition*.json")
+            for i in range(4):
+                run_in_docker("p7-autograder-kafka", f"rm -rf /files/partition-{i}.json")
             run_in_docker("p7-autograder-kafka", "rm -rf /files/yearly_trends.png")
             break
         except Exception as e:
@@ -442,8 +440,7 @@ def test_partition_json_contents():
                     if partition_dict[month][year]["avg"] > 1000:
                         return f"{month}-{year} avg. temperature is {partition_dict[month][year]['avg']}, yikes! Make sure duplicate messages are ignored"
         else: return
-    return f"Failed to read /files/partition-{i}.json inside the container: {str(e)}"
-
+    return f"Failed to read /files/partition-{i}.json inside the container."
 
 if __name__ == "__main__":
     tester_main()

@@ -33,7 +33,7 @@ def get_next_weather_main():
 
 def get_next_weather(delay_sec=1):
     if 'AUTOGRADER_DELAY_OVERRIDE_VAL' in os.environ:
-        delay_sec = int(os.environ['AUTOGRADER_DELAY_OVERRIDE_VAL'])
+        delay_sec = float(os.environ['AUTOGRADER_DELAY_OVERRIDE_VAL'])
     weather_generator = get_next_weather_main()
     while True:
         yield next(weather_generator)
