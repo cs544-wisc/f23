@@ -6,13 +6,13 @@
 
 For this project, imagine a scenario where you are receiving daily weather
 data for a given location. Your task is to populate this
-data into a Kafka stream using a `producer` Python script. Another Python 
-program (the `consumer`) consumes the stream to produce JSON files with 
+data into a Kafka stream using a *Producer* Python script. A *Consumer* Python 
+script consumes data from the stream to produce JSON files with 
 summary stats, for use on a web dashboard (you don't need to build the
-dashboard yourself). 
+dashboard yourself). Later in the project, the consumer itself acts as a producer to populate certain messages into another Kafka topic. Finally, you will visualize some of the data collected by the consumer. 
 
-For simplicity, we'll use a single Kafka broker instead of using a cluster. 
-A single producer will generate the weather data in an infinite loop at an accelerated rate (1 day per second).  Finally, consumers will be different 
+For simplicity, we use a single Kafka broker instead of using a cluster. 
+A single producer will generate weather data in an infinite loop at an accelerated rate (1 day per second). Finally, consumers will be different 
 threads, launching from the same Python script.
 
 Learning objectives:
@@ -20,38 +20,37 @@ Learning objectives:
 * write code for Kafka consumers
 * apply streaming techniques to achive "exactly once" semantics
 * write to different Kafka topics
+* use manual and automatic assignment of Kafka topics and partitions
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
+* None
 
 ## Part 1: Kafka Producer
 
 ### Container setup
-Start by creating a `p7` docker image with Kafka installed using the provided [Dockerfile](./.Dockerfile).
-Launch a container for the `p7` image that runs the single Kafka broker. 
+Start by creating a `p7` docker image with Kafka installed using the provided [Dockerfile](./Dockerfile).
+Run the Kafka broker in the background using: `docker run -d -v ./files:/files p7`. 
 
 Next, to setup the producer and consumer, create two Python scripts 
-called `producer.py` and `consumer.py`. Place both scripts in a `files` directory within your repository.
-
-Run the Kafka broker in the background using `docker run -d -v ./files:/files p7`. 
-To run the producer and consumer script, use `docker exec -it <container_id> python3 <path_of_script>`. 
-This runs the script in the foreground making it easier to debug. 
+called `producer.py` and `consumer.py`. Place both scripts in a `files` directory within your repository. To run the producer and consumer script, use: `docker exec -it <container_id> python3 <path_of_script>`. 
+This will run the script in the foreground making it easier to debug. 
 
 ### Weather data generator
-Using the provided `weather.py` file, you can endlessly generate daily weather data starting from 1-Jan-1990 for a specific location (loosely modelled around the weather of Dane County). Copy `weather.py` to your files directory and se the following snippet of code to generate the weather at an accelarated rate of 1 day per second within your producer:
+Using the provided `weather.py` file, you can infinitely generate daily weather data starting from 1-Jan-1990 for a specific location (loosely modelled around weather of Dane County). Copy `weather.py` to your files directory and use the following snippet of code to generate the weather at an accelarated rate of 1 day per second within your producer:
 
 
 ```python
 import weather
 
 # Runs infinitely because the weather never ends
-for data in weather.get_next_weather():
+for data in weather.get_next_weather(delay_sec=1):
     print(data) # date, max_temperature
 ```
 
 ### Writing to Kafka Streams
-Now paste the following to create two streams.
+Now paste the following in `producer.py` to create two streams.
 One of them (`temperatures`) with 4 partitions and a replication factor of 1 and the other 
 one (`birthday-temperatures`) with 1 partition and a replication factor of 1
 
@@ -77,50 +76,47 @@ bday_temperatures_topic = NewTopic(name="birthday-temperatures", num_partitions=
 admin_client.create_topics([temperatures_topic, bday_temperatures_topic])
 ```
 
-To start, you'll write a produce method to fetch weather data using `get_max_temperatures()` and it to the `temperatures` topic in Kafka. 
+To start, you'll write a produce method to fetch weather data using `get_next_weather` method and push it to the `temperatures` topic in Kafka. 
 The data sent by your producer to Kafka must be in a protobuf format.
 
 Create a protobuf file `report.proto` with a `Report` message having the following entries, and build it to get a `???_pb2.py` file:
 
-* string date (format "YYYY-MM-DD") (Date of the observation)
-* double degrees (Observed max-temperature on this date)
+* string **date** (format "YYYY-MM-DD") - Date of the observation
+* double **degrees**: Observed max-temperature on this date
 
-Write a function in the produce method that loops **forever** over the values
-returned by the `get_max_temperatures()` function, and send out the data to the `temperatures` stream.  You could use this for a starter:
+Within the produce method, loops **infinitely** over the values returned by the `get_next_weather` function, and sends out the data to the `temperatures` stream. You could use the following code as a starting point:
 
 ```python
 def produce():
     producer = KafkaProducer(bootstrap_servers=[???], ????)
     
-    for row in get_max_temperatures():
+    for row in weather.get_next_weather(delay_sec=1):
         # TODO: send to "temperatures" stream using protobuf
 
 # TODO: start thread to run produce
-# never join thread because we want it to run forever
+# never join produce thread because we want it to run forever
 ```
 
-Note: Make sure to compile the proto file before running your producer script.
-
 ### Other requirements
-1. producer: use a setting so that the producer retries up to 10 times when `send` requests fail
-2. producer: use a setting so that `send` calls are not acknowledged until all in-sync replicas have received the data
-3. temperatures stream: use the string representation of the month ('January', 'February', ...) as the `key` when sending out messages to Kafka.
-4. temperatures stream: use a `.SerializeToString()` call to convert a protobuf object to bytes (not a string, despite the name)
+1. Use a setting so that the producer retries up to 10 times when `send` requests fail
+2. Use a setting so that the producer's `send` calls are not acknowledged until all in-sync replicas have received the data
+3. When publishing to the `temperatures` stream, use the string representation of the month ('January', 'February', ...) as the message's `key`
+4. Use a `.SerializeToString()` call to convert a protobuf object to bytes (not a string, despite the name)
 
-## Part 2: Kafka Consumer (temperatures)
+## Part 2: Kafka Consumer
 
-Now, you'll run 2 consumer threads to process the data from the
-"temperatures" stream.  These consumers will generate JSON files
-summarizing temperature data for different months. Write the consumer code in a separate Python script called `consumer.py`
+Next, you will run 2 consumer threads to process the data from the
+`temperatures` stream.  These consumers will generate JSON files
+summarizing temperature data for different months. Write the consumer code in a new Python file named `consumer.py` within the `files` directory
 
 Overview:
-* there are 12 months but only 4 partitions, so naturally some partitions will correspond to data corresponding to multiple months
-* there are 4 partitions and only 2 consumer threads, so each thread should consume exactly 2 partitions. Manually assign partitions 0 and 1 for the first thread, and 
-partitions 2 and 3 for the second.
-* each partition will correspond to one file named `partition-N.json` (where N is the partition number). 
-* the above point means each thread will be in charge of keeping two JSON files updated with the monthly weather summaries
+* there are 12 months but only 4 partitions, so naturally some partitions will correspond to data from multiple months
+* there are 4 partitions and only 2 consumer threads, so each thread should consume exactly 2 partitions. Manually assign partitions 0 and 1 to the first thread, and 
+partitions 2 and 3 to the second.
+* each partition will correspond to one JSON file named `partition-N.json` (where N is the partition number). 
+* the above point means each thread will be in charge of keeping two JSON files updated with the monthly weather summaries.
 
-This is an example of a JSON file corresponding to partition 2 (due to several factors you'll probably never see this exact data):
+The per-partition JSON files store year-wise summaries of months that map to the corresponding partition. Following is an example of a JSON file corresponding to partition 2 (due to several factors you'll probably never see this exact data):
 
 ```json
 {
@@ -163,32 +159,33 @@ This is an example of a JSON file corresponding to partition 2 (due to several f
 }
 ```
 
-The dict in the JSON file should have the following keys at the top/outermost level:
+The JSON file has the following keys at the top/outermost level:
 
-* `partition`: the partition number in the temperatures stream, from which the stats were computed
-* `offset`: the partition offset to which the consumer read to produce this file
-* one key for each month in the partition (in this case, months "January" and "April") (let's call this the month-key)
+* `partition`: the partition number in the temperatures stream, from which the stats were computed.
+* `offset`: the partition offset up to which the consumer compleated reading to produce this file (sort of like a checkpoint)
+* month-key: one key for each month in the partition (in the above example, months "January" and "April")
 
-Each month-key ("January", "April", etc.) maps to another set of keys representing different years. For each year within a month, there's a collection of data that summarizes the weather for that month in that specific year. For a given year, this summary includes:
+Each month-key ("January", "April", etc.) maps to another set of keys representing the years for which weather data was captured. For each year mapped to a month, there's a collection of fields that summarizes the weather for that month in that specific year. For a given year, this summary includes:
 
-* `count`: The number of days in the month for which data is available.
+* `count`: the number of days for which data is available.
 * `sum`: sum of temperatures seen so far (yes, this is an odd metric by itself)
-* avg: the sum/count. This is the only reason we record the sum -- so we can recompute the average on a running basis without having to remember and loop over all temperatures each time the file is updated
+* `avg`: the `sum/count`. This is the only reason we record the sum - so we can recompute the average on a running basis without having to remember and loop over all temperatures each time the file is updated
 * `start`: the date of the *first* measurement for the corresponding
 month and year combination
 * `end`: the date of the *last* measurement for the corresponding
 month and year combination
 
-For example, under "January" for the year "1990", the count is 31 (indicating data for all 31 days of January), the sum is 599, the avg is approximately 19.32, and the data collection period is from "1990-01-01" to "1990-01-31". This pattern repeats for each month and year combination in the dataset.
+In the sample JSON, under "January" for the year "1990", the count is 31 (indicating data for all 31 days of January was recorded), the sum is 599, the avg is approximately 19.32, and the data collection period is from "1990-01-01" to "1990-01-31". This pattern repeats for each month and year combination in the dataset.
 
-Paste the following cell in your script so that everytime we re-run the script, we'll be starting from the same situation (no prior JSON
-files).
+### Creating Partition JSONs
+
+Within `consumer.py` Paste the following cell in your script so that everytime we re-run the script, existing JSON files are deleted and we start from the same situation.
 
 ```python
 import os, json
 
 for partition_num in range(???):
-    path = f"partition-{partition_num}.json"
+    path = ???
     if os.path.exists(path):
         os.remove(path)
 ```
@@ -197,7 +194,7 @@ You can use the following starter code for loading and saving a partition:
 
 ```python
 def load_partition(partition_num):
-    path = f"partition-{partition_num}.json"
+    path = ???
     if os.path.exists(path):
         with open(path, "r") as file:
             return json.load(file)
@@ -209,11 +206,11 @@ def atomic_save_partition_file(partition_dict):
     json.dump(partition_dict, file)
     ???
 ```
-
-You can use the following starter code for your consumers:
+### `temperatures` Consumer
+You can use the following starter code for your consumer threads (recall we want two consumers for the 4 partitions in `temperatures`):
 
 ```python
-def consume(part_nums=[], max_iterations):
+def consume(partition_nums_to_consume=[], max_iterations):
     consumer = ????
     # TODO: create list of TopicPartition objects
     consumer.assign(????)
@@ -235,24 +232,16 @@ def consume(part_nums=[], max_iterations):
             # perhaps create a separate function for the following?  You decide.
             # TODO: update the partitions based on new messages
             # TODO: save the data back to the JSON file
+        
+        # Run infinitely if 'max_iterations' is None
         if max_iterations is not None: iteration_count += 1
-    print("exiting")
 
-for i in range(2):
-    print("Running round: ", i)
-    consumer_of_0_1 = Thread(target=consume, args=([0,1], 30))
-    consumer_of_2_3 = Thread(target=consume, args=([???,???], 30))
-    
-    # TODO: Start all consumer threads
-    
-    # TODO: Wait for all consumers to complete
+    print("exiting")
 ```
 
-Note that instead of when the `max_iterations` variable of the consume method is None, the consumer runs infinitely. However, if a numeric value is passed, the consumer only runs for the specified number of iterations, you would
-typically have an infinite loop (like `while True`).
+Note that instead of when the `max_iterations` argument of the `consume` method is `None`, the consumer runs infinitely. However, if a numeric value is passed, the consumer only runs for the specified number of iterations. Typically, the consumer will run infinitely.
 
-Now we will perform **two rounds** running the consumer. In the first round, the consumers run a total of 30 iterations and then stop. In the next round, we run the consumers without any limit on the number of iteration (so `max_iterations` is None). The point here is to practice writing your consumers so that if they die and get restarted, the new consumers can pickup where the previous ones left
-off, while avoiding both these problems:
+Now we will perform **two rounds** of running the consumers. In the first round, the consumers run 30 iterations each and then stop. In the next round, we run the consumers without any limit on the number of iteration (so `max_iterations` is None) and leave them running in the background. The point here is to practice writing your consumers so that if they die and get restarted, the new consumers can pickup where the previous ones left off, while avoiding both these problems:
 
 * missing some messages
 * double counting some messages
@@ -260,14 +249,14 @@ off, while avoiding both these problems:
 Your code for running these two rounds would look like this:
 ```python3
 # Round 1: Run consumers for 30 iterations
-# Create thread to run consumer 1 for 30 iterations
-# Create thread to run consumer 2 for 30 iterations
-# Run both consumer threads (parallelly)
-# Wait for both consumer threads to complete (simulates consumers dying)
+  # Create thread to run consumer 1 for 30 iterations
+  # Create thread to run consumer 2 for 30 iterations
+  # Run both consumer threads (parallelly)
+  # Wait for both consumer threads to complete (simulates consumers dying)
 
 # Round 2: Run consumers for infinite iterations
-# Same as round 1, except no limit on iterations
-# Do not join these threads, let them run infinitely in the background
+  # Same as round 1, except no limit on iterations
+  # Do not join these threads, let them run infinitely in the background
 ```
 
 ### Required: Exactly-Once Kafka Messages
@@ -282,9 +271,9 @@ To avoid **undercounting**:
 To avoid **overcounting**:
 * when a consumer updates a JSON file, it must record the current read offset in the file (you can get this with `consumer.position(???)`)
 * when a new consumer starts, it must start reading from the last offset (you can do this with `consumer.seek(????)`)
-* when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the "end" entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write.  So retry could produce duplicates in the stream. The weather generation function has a 5% chance of returning a duplicated value, so keep this in mind. Other than these duplicated messages, you may assume all other messages are generated in order.
+* when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the `end` entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write. So retry could produce duplicates in the stream. To highlight this, the weather generation function has a 5% chance of generating a duplicated value, so keep this in mind. Other than these duplicated entries, you may assume all other messages are generated in order.
 
-## Part 4: Another Producer & Consumer (birthday-temperatures)
+## Part 3: Another Producer & Consumer (birthday-temperatures)
 
 ### Publish birthday temperatures
 For this part, we want our consumers to identify weather data on a specific date (your birthday) and send this information to another Kafka topic `birthday-temperatures` (which we have already created in Part 1). Notice that this

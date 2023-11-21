@@ -33,11 +33,11 @@ def get_next_weather_main():
         if day_count > 400:
             break
 
-def get_next_weather(sleep_sec=1):
+def get_next_weather(delay_sec=1):
     weather_generator = get_next_weather_main()
     while True:
         yield next(weather_generator)
-        time.sleep(sleep_sec)
+        time.sleep(delay_sec)
 
 # Example usage
 # for date, temp in get_next_weather():
