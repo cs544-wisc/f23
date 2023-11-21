@@ -25,13 +25,11 @@ def get_next_weather_main():
         else:
             temperature = trend_list[day_of_year - 1]
         
-        temperature += (year - 1990) * round(random.uniform(0.01, 0.10), 4)
+        temperature += (year - 1990) * random.uniform(0.02, 0.1)
+        temperature += random.uniform(-5,5)
         current_date = start_date + datetime.timedelta(days=day_count)
-        yield current_date.strftime('%Y-%m-%d'), temperature
+        yield current_date.strftime('%Y-%m-%d'), round(temperature, 4)
         day_count += 1
-        
-        if day_count > 400:
-            break
 
 def get_next_weather(delay_sec=1):
     weather_generator = get_next_weather_main()

@@ -12,7 +12,7 @@ summary stats, for use on a web dashboard (you don't need to build the
 dashboard yourself). Later in the project, the consumer itself acts as a producer to populate certain messages into another Kafka topic. Finally, you will visualize some of the data collected by the consumer. 
 
 For simplicity, we use a single Kafka broker instead of using a cluster. 
-A single producer will generate weather data in an infinite loop at an accelerated rate (1 day per second). Finally, consumers will be different 
+A single producer will generate weather data in an infinite loop at an accelerated rate (1 day per 0.5 second). Finally, consumers will be different 
 threads, launching from the same Python script.
 
 Learning objectives:
@@ -21,6 +21,7 @@ Learning objectives:
 * apply streaming techniques to achive "exactly once" semantics
 * write to different Kafka topics
 * use manual and automatic assignment of Kafka topics and partitions
+* ensure atomic writes to files
 
 Before starting, please review the [general project directions](../projects.md).
 
@@ -30,29 +31,30 @@ Before starting, please review the [general project directions](../projects.md).
 ## Part 1: Kafka Producer
 
 ### Container setup
-Start by creating a `p7` docker image with Kafka installed using the provided [Dockerfile](./Dockerfile).
-Run the Kafka broker in the background using: `docker run -d -v ./files:/files p7`. 
+Start by creating a `files` directory in your repository. Your python scripts and generated files must be stored in this directory.
+Next, build a `p7` docker image with Kafka installed using the provided Dockerfile.
+Run the Kafka broker in the background using: `docker run -d -v ./files:/files p7`
 
-Next, to setup the producer and consumer, create two Python scripts 
-called `producer.py` and `consumer.py`. Place both scripts in a `files` directory within your repository. To run the producer and consumer script, use: `docker exec -it <container_id> python3 <path_of_script>`. 
-This will run the script in the foreground making it easier to debug. 
+To setup the producer and consumer, create two Python scripts 
+named `producer.py` and `consumer.py` within `files`. To run the producer and consumer script, use: `docker exec -it <container_name> python3 <path_of_script>`. 
+This will run the script in the foreground, making it easier to debug. 
 
 ### Weather data generator
-Using the provided `weather.py` file, you can infinitely generate daily weather data starting from 1-Jan-1990 for a specific location (loosely modelled around weather of Dane County). Copy `weather.py` to your files directory and use the following snippet of code to generate the weather at an accelarated rate of 1 day per second within your producer:
-
+Using the provided `weather.py` file, you can infinitely generate daily weather data starting from 1990-01-01 for a specific location (loosely modelled around weather of Dane County). Copy `weather.py` to your `files` directory and try generating some data using the following code snippet. This will generate the weather at an accelarated rate of 1 day per 0.5 second:
 
 ```python
 import weather
 
 # Runs infinitely because the weather never ends
-for data in weather.get_next_weather(delay_sec=1):
+for data in weather.get_next_weather(delay_sec=0.5):
     print(data) # date, max_temperature
 ```
+Note: The above snippet is just for testing, don't include it in your submission
 
 ### Writing to Kafka Streams
 Now paste the following in `producer.py` to create two streams.
 One of them (`temperatures`) with 4 partitions and a replication factor of 1 and the other 
-one (`birthday-temperatures`) with 1 partition and a replication factor of 1
+one (`birthday-temperatures`) with 1 partition and a replication factor of 1.
 
 ```python
 from kafka import KafkaAdminClient
@@ -74,17 +76,19 @@ time.sleep(3) # Deletion sometimes takes a while to reflect
 temperatures_topic = NewTopic(name="temperatures", num_partitions=4, replication_factor=1)
 bday_temperatures_topic = NewTopic(name="birthday-temperatures", num_partitions=1, replication_factor=1)
 admin_client.create_topics([temperatures_topic, bday_temperatures_topic])
+
+print("Topics:", admin_client.list_topics())
 ```
 
-To start, you'll write a produce method to fetch weather data using `get_next_weather` method and push it to the `temperatures` topic in Kafka. 
+You will be writing a produce method to fetch weather data using `get_next_weather` method and push it to the `temperatures` topic in Kafka. 
 The data sent by your producer to Kafka must be in a protobuf format.
 
-Create a protobuf file `report.proto` with a `Report` message having the following entries, and build it to get a `???_pb2.py` file:
+To start, create a protobuf file `report.proto` in `files` with a `Report` message having the following entries, and build it to get a `???_pb2.py` file:
 
 * string **date** (format "YYYY-MM-DD") - Date of the observation
 * double **degrees**: Observed max-temperature on this date
 
-Within the produce method, loops **infinitely** over the values returned by the `get_next_weather` function, and sends out the data to the `temperatures` stream. You could use the following code as a starting point:
+Within the produce method, loop over the values returned by the `get_next_weather` function (which keeps returning values infinitely), and sends out the data to the `temperatures` stream. You can use the following code as a starting point:
 
 ```python
 def produce():
@@ -179,15 +183,17 @@ In the sample JSON, under "January" for the year "1990", the count is 31 (indica
 
 ### Creating Partition JSONs
 
-Within `consumer.py` Paste the following cell in your script so that everytime we re-run the script, existing JSON files are deleted and we start from the same situation.
+Within `consumer.py` Paste the following cell in your script so that everytime we re-run the script, 
+existing JSON and other generated files are deleted and we start from the same situation.
 
 ```python
-import os, json
+import os
 
-for partition_num in range(???):
-    path = ???
+files = [f"/files/partition-{i}.json" for i in range(4)] + ["/files/birthday.json", "/files/yearly_trend.png"]
+for path in files:
     if os.path.exists(path):
         os.remove(path)
+        print(f"Deleted {path}")
 ```
 
 You can use the following starter code for loading and saving a partition:
@@ -201,16 +207,17 @@ def load_partition(partition_num):
     else:
         return { ???? }
 
-def atomic_save_partition_file(partition_dict):
+def save_dict_to_json(filename, dict_to_save):
     ???
     json.dump(partition_dict, file)
     ???
 ```
 ### `temperatures` Consumer
+Let us now create the consume method to read the messages from Kafka. 
 You can use the following starter code for your consumer threads (recall we want two consumers for the 4 partitions in `temperatures`):
 
 ```python
-def consume(partition_nums_to_consume=[], max_iterations):
+def consume(partition_nums_to_consume, max_iterations):
     consumer = ????
     # TODO: create list of TopicPartition objects
     consumer.assign(????)
@@ -226,7 +233,7 @@ def consume(partition_nums_to_consume=[], max_iterations):
 
     # PART 2: process batches
     iteration_count = 0
-    while iteration_count < max_iterations:
+    while max_iterations is None or iteration_count < max_iterations:
         batch = consumer.poll(1000) # 1s timeout
         for topic, messages in batch.items():
             # perhaps create a separate function for the following?  You decide.
@@ -281,7 +288,9 @@ topic only has a single partition for simplicity. With this, our consumer will
 act like a producer, sending out messages to the `birthday-temperatures` topic.
 
 Update your existing `consume` function by creating a KafkaProducer within it (for producing birthday weather messages). For this producer, use the same `acks` and `retries` configurations as in the existing producer. Withing the existing `consume` method, identify weather records that fall on your birthday 
-(match the month and day of the month from the messages with your birthday). If you find such a message, publish a corresponding entry to the `birthday-temperatures` topic. To simplify things, instead of using a protobuf format for this new message, encode the message as a string as described below:
+(match the month and day of the month from the messages with your birthday). If you find such a message, publish a corresponding entry to the `birthday-temperatures` topic. 
+
+To simplify things, instead of using a protobuf format for this new message, encode the message as a string as described below:
 ```python
 # Message format: YEAR,DEGREES e.g. "2012,25.5"
 message_as_bytes = bytes(f"{year_of_msg},{proto_data.degrees}", 'utf-8')
@@ -318,7 +327,7 @@ Store the date collected by this new consumer in a single `birthday.json` file w
   "1991": 25.6
 }
 ``` 
-The "birthday" key stores your birthday and there is one key per year from which the weather data was captured. Each year maps to the corresponding temperature (the temperature from that year on your birthday).
+The "birthday" key stores your birthday (YYYY-MM-DD) and there is one key per year from which the weather data was captured. Each year maps to the corresponding temperature (the temperature from that year on your birthday). Make sure to use the `save_dict_to_json` function for saving the contents.
 
 ## Part 4: Visualizing Yearly Trends
 
@@ -327,15 +336,33 @@ In this part, we will visualize the weather summary, for a given month, stored i
 Since data is continuously being produced in the background, your plot will keep getting outdated and will need refreshing. Use the below structure to re-generate the plot every 30 seconds to reflect the updated data in the generated png:
 
 ```python
-while True:
-  sleep(30) # Wait 30 seconds for updated data
-  # TODO: Plot the bar chart
-  
-  # Save the plot
-  plt.savefig('<path>/yearly_trend.png')
+target_month = "January"
+# TODO: Find path of partition file storing summary for January
+partition_file_with_tgt = ???
 
-  # Clear the plot data for the next iteration
-  plt.clf()
+fig, ax = plt.subplots()
+# Keep refreshing the plot after 5 seconds
+while True:
+    time.sleep(5)
+
+    try:
+      # TODO: Read January's yearly temperatures from 'partition_file_with_tgt'
+    except Exception as e:
+      print("Failed reading partition for January, retrying...")
+      continue    
+
+    # Clear the previous plot data
+    ax.clear()
+    # Update the plot with new data
+    ax.bar(x, y)
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Avg. Max Temperature for January')
+    ax.set_title('Avg. Max Temperatures per year')
+    plt.xticks(rotation=90)
+
+    # Save the plot
+    plt.savefig('/files/yearly_trends.png')
+    print("Refreshed Graph")
 ```
 
 ![Yearly trends plot](./monthly-trend.png?raw=true "Yearly trends plot for January")
@@ -353,7 +380,9 @@ original file is `F.txt` -- you might write the new version to
 `F.txt.tmp`.  After the new data has been completely written, you can
 rename F.txt.tmp to F.txt.  This atomically replaces the file
 contents. Anybody trying to read it will see all old data or all new
-data.
+data. Make these changes to your `save_dict_to_json` function that
+is responsible for saving summary JSON files (both partition JSON files
+and birthday.json file)
 
 ```python
 path = ????
@@ -371,6 +400,7 @@ you're curious about this scenario.
 
 ## Submission
 All your code and generated files (partition json files and graphs) should be in a directory named `files` within your repository.
+Your generated files (partition JSON files, graph, birthday JSON file) must contain data for atleast 3 years starting from 1990.
 
 We should be able to run the following on your submission to build and run the required image:
 
@@ -382,13 +412,32 @@ docker build . -t p7
 docker run -d -v ./files:/files p7
 
 # To run the producer script
-docker exec -it <container_id> python3 /files/producer.py`
+docker exec -it <container_name> python3 /files/producer.py
 # To run the consumer script
-docker exec -it <container_id> python3 /files/consumer.py`
+docker exec -it <container_name> python3 /files/consumer.py
+```
+
+Verify that your submission repo has a structure similar to this:
+
+```
+.
+├── Dockerfile
+└── files
+    ├── producer.py
+    ├── consumer.py
+    ├── report.proto
+    ├── partition-0.json
+    ├── partition-1.json
+    ├── partition-2.json
+    ├── partition-3.json
+    ├── yearly_trends.png
+    ├── birthday.json
+    ├── report_pb2.ipynb
+    └── weather.py
 ```
 
 # Testing
-We also be using an autograder to verify your solution which you can run yourself by running the following command in the p7 directory:
+We will be using an autograder to verify your solution which you can run yourself by running the following command in the p7 directory:
 
 ```
 python3 autograde.py
