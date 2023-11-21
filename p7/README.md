@@ -280,32 +280,37 @@ For this part, we want our consumers to identify weather data on a specific date
 topic only has a single partition for simplicity. With this, our consumer will
 act like a producer, sending out messages to the `birthday-temperatures` topic.
 
-Within your consumer code, create a KafkaProducer with the same `acks` and `retries` configurations as in the previous producer. When the consumer identifies weather records that fall on your birthday 
-(match the month and day of the month from the messages with your birthday), publish the a message to the `birthday-temperatures` topic. To simplify things, instead of using a protobuf format for the message, encode the message as a string as described below:
+Update your existing `consume` function by creating a KafkaProducer within it (for producing birthday weather messages). For this producer, use the same `acks` and `retries` configurations as in the existing producer. Withing the existing `consume` method, identify weather records that fall on your birthday 
+(match the month and day of the month from the messages with your birthday). If you find such a message, publish a corresponding entry to the `birthday-temperatures` topic. To simplify things, instead of using a protobuf format for this new message, encode the message as a string as described below:
 ```python
-# Message format: YEAR,DEGREES e.g. "1997,25.5"
+# Message format: YEAR,DEGREES e.g. "2012,25.5"
 message_as_bytes = bytes(f"{year_of_msg},{proto_data.degrees}", 'utf-8')
+# Publish 'message_as_bytes' to 'birthday-temperatures'
 ```
 
 ### Consume birthday temperatures
-Write a new consumer that subscribes to the `birthday-temperatures` topic (use automatic assignment instead of manual assignment) and collects the temperatures on your birthday across different years.  
+We now have a stream of messages being written to the `birthday-temperatures` topic by the `consume` method. We need a new consumer to read these messages! 
 
-Here is some code to assist with setting this section up
+Write a new consumer that **subscribes** to the `birthday-temperatures` topic (use automatic assignment instead of manual assignment) and collects the temperatures on your birthday across different years.  
+
+Here is some code to assist with setting this section up:
 
 ```python
 def consume_birthday_data():
-    consumer = ???
-    consumer.subscribe([???])
+    bday_consumer = ???
+    bday_consumer.subscribe([???])
     
     # Run infinitely
     while True:
-        batch = consumer.poll(1000)
+        batch = bday_consumer.poll(1000)
         for topic, messages in batch.items():
             for message in messages:
-                # Decode the message and store it somewhere
+                # TODO: Decode the message and store it somewhere
+
+# TODO: Run 'consume_birthday_data' in a thread so it keeps running in background
 ```
 
-Store the date collected by this consumer in a `birthday.json` file with the following format:
+Store the date collected by this new consumer in a single `birthday.json` file with the following format:
 ```json
 {
   "birthday": "1997-10-02",
@@ -313,13 +318,13 @@ Store the date collected by this consumer in a `birthday.json` file with the fol
   "1991": 25.6
 }
 ``` 
-The "birthday" key should store your birthday and there should be one key per year from which the weather data was captured.
-Each year should be mapped to the corresponding temperature (the temperature from that year on your birthday).
+The "birthday" key stores your birthday and there is one key per year from which the weather data was captured. Each year maps to the corresponding temperature (the temperature from that year on your birthday).
 
 ## Part 4: Visualizing Yearly Trends
 
-### Yearly Trend for January
-In this part, we will visualize the weather summary, for a given month stored, in the partition json files. Read the partition files to identify which JSON file contains weather data for the month of **January**. For this month, plot a bar chart with its x-axis representing the different years for which weather summary data exists, and the y-axis representing the average temperature for each year. Since data is continuously flowing in, your plot will keep getting outdated and would need refreshing. Use the below structure to re-generate the plot every 30 seconds to reflect the updated data on the plot:
+In this part, we will visualize the weather summary, for a given month, stored in the partition json files. Read the partition files to identify which file contains weather data for the month of **January**. For this month, plot a bar chart with its x-axis representing the years over which weather summary data exists. The y-axis should represent the average temperature for each year in January. Save the graph in the `files` directory under the name `yearly_trend.png`
+
+Since data is continuously being produced in the background, your plot will keep getting outdated and will need refreshing. Use the below structure to re-generate the plot every 30 seconds to reflect the updated data in the generated png:
 
 ```python
 while True:
@@ -327,20 +332,19 @@ while True:
   # TODO: Plot the bar chart
   
   # Save the plot
-  plt.savefig('./yearly_trend.png')
+  plt.savefig('<path>/yearly_trend.png')
 
   # Clear the plot data for the next iteration
   plt.clf()
-
 ```
 
-![Yearly trends plot](./monthly-trend.png?raw=true "Yearly trends plot")
+![Yearly trends plot](./monthly-trend.png?raw=true "Yearly trends plot for January")
 
 ### Atomic File Writes
 
 Remember that we're producing the JSON files so somebody else (not
-you) can use them to build a web dashboard. We are also using the JSON files to continously plot graphs. What if the dashboard app or the graph generation script tries to read the JSON file at the same time your consumer is updating
-the file?  It's possible the dashboard app could read an
+you) can use them to build a web dashboard. We are also using the JSON files to continously plot graphs. What if the dashboard app or the graph plotting script tries to read the JSON file at the same time your consumer is updating
+the file? It's possible the dashboard or plotting app could read an
 incomprehensible mix of old and new data.
 
 To prevent such partial writes, the proper technique is to write
