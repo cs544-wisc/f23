@@ -38,7 +38,7 @@ def wait_for_all_three_up():
     command_to_run = "docker exec -it p6-db-1 nodetool status"
 
     while not all_three_up:
-        time.sleep(10)  # Wait a little bit
+        time.sleep(1)  # Wait a little bit
 
         # Read the result of nodetool status
         result = subprocess.run(
@@ -46,7 +46,7 @@ def wait_for_all_three_up():
 
         all_three_up = result.stdout.count("UN") >= 3
 
-    time.sleep(10)
+    time.sleep(5)
     print("Cassandra cluster has started up")
 
 
@@ -56,7 +56,7 @@ def wait_for_one_dead():
     command_to_run = "docker exec -it p6-db-1 nodetool status"
 
     while not one_node_dead:
-        time.sleep(5)  # Wait a little bit
+        time.sleep(1)  # Wait a little bit
 
         # Read the result of nodetool status
         result = subprocess.run(
@@ -64,15 +64,15 @@ def wait_for_one_dead():
 
         one_node_dead = result.stdout.count("DN") >= 1
 
-    time.sleep(10)
+    time.sleep(5)
     print("Detected a down cassandra node")
 
 
-def cell_pause_runner(output_path):
+def q4_listener(output_path):
     # Block till the docker_autograde requests the server to be run
     q4_cell_path = os.path.join(output_path, "q4.cell")
     while not os.path.exists(q4_cell_path):
-        time.sleep(5)
+        time.sleep(1)
     print("Blocking notebook execution to startup server")
 
     # Start up the server
@@ -94,12 +94,16 @@ def cell_pause_runner(output_path):
     subprocess.run(q4_remove_command, shell=True, env=environment)
     print("Resuming notebook execution")
 
+
+def q7_listener(output_path):
     # Block till server requests to kill one of the nodes
     q7_cell_path = os.path.join(output_path, "q7.cell")
     while not os.path.exists(q7_cell_path):
-        time.sleep(5)
+        time.sleep(1)
+    print("Blocking notebook execution to kill one node")
 
     # Kill one of the nodes
+    environment = get_environment()
     print("Blocking notebook execution to kill p6-db-2")
     subprocess.run("docker kill p6-db-2", shell=True, env=environment)
 
@@ -161,22 +165,25 @@ def init_runner(test_dir):
     command_to_run = f"docker exec -d -w /nb p6-db-1 sh -c \"python3 -u pausable_nb_run.py p6.ipynb --pauses=4,7 >> {output_dir_name}/nb_runner.out 2>&1\" "
     result = subprocess.run(command_to_run, shell=True, env=environment)
 
-    # Start the listener as a daemon thread
-    listener_thread = threading.Thread(
-        target=cell_pause_runner, args=(output_path, ))
-    listener_thread.daemon = True
-    listener_thread.start()
+    # Start the listeners as a daemon thread
+    q4_thread = threading.Thread(target=q4_listener, args=(output_path, ))
+    q4_thread.daemon = True
+    q4_thread.start()
+
+    q7_thread = threading.Thread(target=q7_listener, args=(output_path, ))
+    q7_thread.daemon = True
+    q7_thread.start()
 
     # Wait for the result file
     results_file = os.path.join(output_path, "result.ipynb")
     while not os.path.exists(results_file):
-        time.sleep(5)
+        time.sleep(1)
 
     # Copying the results back
     save_dir = os.path.join(test_dir, output_dir_name)
     os.makedirs(save_dir, exist_ok=True)
 
-    time.sleep(5)
+    time.sleep(1)
     os.system(f"cp -rf {output_path}/. {save_dir}")
     os.system(f"rm -rf {save_dir}/*.cell")
     os.system(f"rm -rf nb/pausable_nb_run.py")
@@ -194,7 +201,7 @@ def init(*args, **kwargs):
     expected_path = kwargs["existing_file"]
     if expected_path is None:
         test_dir = os.path.dirname(os.path.abspath(__file__))
-        default_timeout = 900  # Allow for 15 minutes to run the entire notebook
+        default_timeout = 1200  # Allow for 15 minutes to run the entire notebook
 
         # Run the init function
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:

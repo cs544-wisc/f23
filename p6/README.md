@@ -27,6 +27,7 @@ Before starting, please review the [general project directions](../projects.md).
 * November 13th: Added in clarification about the file structure
 * November 14th: Fix q10 to account for single quoute strings
 * November 15th: Added hint about using pivot
+* November 21st: Bumped up timeouts
 
 ## Cluster Setup
 
