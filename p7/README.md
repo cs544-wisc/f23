@@ -17,7 +17,7 @@ the consumer.
 For simplicity, we use a single Kafka broker instead of using a
 cluster.  A single producer will generate weather data in an infinite
 loop at an accelerated rate (1 day per 0.5 second). Finally, consumers
-will be different threads, launching from the same Python program.
+will be different processes, launching from the same Python program.
 
 Learning objectives:
 * write code for Kafka producers
@@ -54,7 +54,7 @@ until manually killed.
 
 ### Topic Initialization
 
-Create a `producer.py` that creates a `temperatures` topic with 4
+Create a `files/producer.py` that creates a `temperatures` topic with 4
 partitions and 1 replica.  If the topic already existed, it should
 first be deleted.
 
@@ -128,7 +128,7 @@ docker exec -d p7 python3 /files/producer.py
 
 ## Part 2: Kafka Debug Consumer
 
-Create a `debug.py` program that initializes a KafkaConsumer.  It
+Create a `files/debug.py` program that initializes a KafkaConsumer.  It
 could be in a consumer group named "debug".
 
 The consumer should subscribe to the "temperatures" topic; let the
@@ -155,18 +155,46 @@ as expected.
 
 ## Part 3: Kafka Stats Consumer
 
-Next, you will run 2 consumer threads to process the data from the
+Now you'll write a `files/consumer.py` that computes stats on the topic,
+outputing results to JSON files after each batch.
+
+### Partition Files
+
+`consumer.py` will use manual partition assignment.  If it is launched
+as `docker exec -it p7 python3 /files/consumer.py 0 2`, it should
+assign partitions 0 and 2 of the `temperatures` topic.
+
+Next, you will run 2 consumer processes to process the data from the
 `temperatures` stream.  These consumers will generate JSON files
 summarizing temperature data for different months. Write the consumer code in a new Python file named `consumer.py` within the `files` directory
 
 Overview:
 * there are 12 months but only 4 partitions, so naturally some partitions will correspond to data from multiple months
-* there are 4 partitions and only 2 consumer threads, so each thread should consume exactly 2 partitions. Manually assign partitions 0 and 1 to the first thread, and 
-partitions 2 and 3 to the second.
 * each partition will correspond to one JSON file named `partition-N.json` (where N is the partition number). 
-* the above point means each thread will be in charge of keeping two JSON files updated with the monthly weather summaries.
+* there will be 4 JSON files, but we might launch fewer than 4 consumer.py processes, so each process should be capable of keeping multiple JSON files updated
 
-The per-partition JSON files store year-wise summaries of months that map to the corresponding partition. Following is an example of a JSON file corresponding to partition 2 (due to several factors you'll probably never see this exact data):
+When a consumer launches that is responsible for partition N, it
+should check whether `partition-N.json` exists.  If it does not exist,
+your consumer should first initialize it to `{"partition": N,
+"offset": 0}`.
+
+Your consumer should then load `partition-N.json` to a Python
+dictionary.  To manage each partition in memory, you might want a
+dictionary where each key is a partition number and each value is a
+dictionary with data for that partition.
+
+When the `partition-N.json` files are loaded, your consumer should
+`seek` on each partition to the offset specified in the file.
+
+### Message Processing
+
+TODO
+
+
+The per-partition JSON files store year-wise summaries of months that
+map to the corresponding partition. Following is an example of a JSON
+file corresponding to partition 2 (due to several factors you'll
+probably never see this exact data):
 
 ```json
 {
@@ -212,10 +240,14 @@ The per-partition JSON files store year-wise summaries of months that map to the
 The JSON file has the following keys at the top/outermost level:
 
 * `partition`: the partition number in the temperatures stream, from which the stats were computed.
-* `offset`: the partition offset up to which the consumer compleated reading to produce this file (sort of like a checkpoint)
+* `offset`: the partition offset up to which the consumer completed reading to produce this file (sort of like a checkpoint)
 * month-key: one key for each month in the partition (in the above example, months "January" and "April")
 
-Each month-key ("January", "April", etc.) maps to another set of keys representing the years for which weather data was captured. For each year mapped to a month, there's a collection of fields that summarizes the weather for that month in that specific year. For a given year, this summary includes:
+Each month-key ("January", "April", etc.) maps to another set of keys
+representing the years for which weather data was captured. For each
+year mapped to a month, there's a collection of fields that summarizes
+the weather for that month in that specific year. For a given year,
+this summary includes:
 
 * `count`: the number of days for which data is available.
 * `sum`: sum of temperatures seen so far (yes, this is an odd metric by itself)
@@ -225,42 +257,17 @@ month and year combination
 * `end`: the date of the *last* measurement for the corresponding
 month and year combination
 
-In the sample JSON, under "January" for the year "1990", the count is 31 (indicating data for all 31 days of January was recorded), the sum is 599, the avg is approximately 19.32, and the data collection period is from "1990-01-01" to "1990-01-31". This pattern repeats for each month and year combination in the dataset.
+In the sample JSON, under "January" for the year "1990", the count is
+31 (indicating data for all 31 days of January was recorded), the sum
+is 599, the avg is approximately 19.32, and the data collection period
+is from "1990-01-01" to "1990-01-31". This pattern repeats for each
+month and year combination in the dataset.
 
-### Creating Partition JSONs
-
-Within `consumer.py` Paste the following cell in your program so that everytime we re-run the program, 
-existing JSON and other generated files are deleted and we start from the same situation.
-
-```python
-import os
-
-files = [f"/files/partition-{i}.json" for i in range(4)] + ["/files/birthday.json", "/files/yearly_trend.png"]
-for path in files:
-    if os.path.exists(path):
-        os.remove(path)
-        print(f"Deleted {path}")
-```
-
-You can use the following starter code for loading and saving a partition:
-
-```python
-def load_partition(partition_num):
-    path = ???
-    if os.path.exists(path):
-        with open(path, "r") as file:
-            return json.load(file)
-    else:
-        return { ???? }
-
-def save_dict_to_json(filename, dict_to_save):
-    ???
-    json.dump(partition_dict, file)
-    ???
-```
 ### `temperatures` Consumer
-Let us now create the consume method to read the messages from Kafka. 
-You can use the following starter code for your consumer threads (recall we want two consumers for the 4 partitions in `temperatures`):
+
+Let us now create the consume method to read the messages from Kafka.
+You can use the following starter code for your consumer processes
+(recall we want two consumers for the 4 partitions in `temperatures`):
 
 ```python
 def consume(partition_nums_to_consume, max_iterations):
@@ -292,9 +299,18 @@ def consume(partition_nums_to_consume, max_iterations):
     print("exiting")
 ```
 
-Note that instead of when the `max_iterations` argument of the `consume` method is `None`, the consumer runs infinitely. However, if a numeric value is passed, the consumer only runs for the specified number of iterations. Typically, the consumer will run infinitely.
+Note that instead of when the `max_iterations` argument of the
+`consume` method is `None`, the consumer runs infinitely. However, if
+a numeric value is passed, the consumer only runs for the specified
+number of iterations. Typically, the consumer will run infinitely.
 
-Now we will perform **two rounds** of running the consumers. In the first round, the consumers run 30 iterations each and then stop. In the next round, we run the consumers without any limit on the number of iteration (so `max_iterations` is None) and leave them running in the background. The point here is to practice writing your consumers so that if they die and get restarted, the new consumers can pickup where the previous ones left off, while avoiding both these problems:
+Now we will perform **two rounds** of running the consumers. In the
+first round, the consumers run 30 iterations each and then stop. In
+the next round, we run the consumers without any limit on the number
+of iteration (so `max_iterations` is None) and leave them running in
+the background. The point here is to practice writing your consumers
+so that if they die and get restarted, the new consumers can pickup
+where the previous ones left off, while avoiding both these problems:
 
 * missing some messages
 * double counting some messages
@@ -304,12 +320,12 @@ Your code for running these two rounds would look like this:
 # Round 1: Run consumers for 30 iterations
   # Create thread to run consumer 1 for 30 iterations
   # Create thread to run consumer 2 for 30 iterations
-  # Run both consumer threads (parallelly)
-  # Wait for both consumer threads to complete (simulates consumers dying)
+  # Run both consumer processes (parallelly)
+  # Wait for both consumer processes to complete (simulates consumers dying)
 
 # Round 2: Run consumers for infinite iterations
   # Same as round 1, except no limit on iterations
-  # Do not join these threads, let them run infinitely in the background
+  # Do not join these processes, let them run infinitely in the background
 ```
 
 ### Required: Exactly-Once Kafka Messages
