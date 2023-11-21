@@ -9,9 +9,7 @@ data for a given location. Your task is to populate this
 data into a Kafka stream using a `producer` Python script. Another Python 
 program (the `consumer`) consumes the stream to produce JSON files with 
 summary stats, for use on a web dashboard (you don't need to build the
-dashboard yourself).  A Spark streaming job also consumes the streams
-to generate datasets for machine learning (the goal being to predict
-weather).  Spark is also used to train models on this data.
+dashboard yourself). 
 
 For simplicity, we'll use a single Kafka broker instead of using a cluster. 
 A single producer will generate the weather data in an infinite loop at an accelerated rate (1 day per second).  Finally, consumers will be different 
