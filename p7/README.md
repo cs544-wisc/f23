@@ -4,16 +4,20 @@
 
 ## Overview
 
-For this project, imagine a scenario where you are receiving daily weather
-data for a given location. Your task is to populate this
-data into a Kafka stream using a *Producer* Python script. A *Consumer* Python 
-script consumes data from the stream to produce JSON files with 
-summary stats, for use on a web dashboard (you don't need to build the
-dashboard yourself). Later in the project, the consumer itself acts as a producer to populate certain messages into another Kafka topic. Finally, you will visualize some of the data collected by the consumer. 
+For this project, imagine a scenario where you are receiving daily
+weather data for a given location. Your task is to populate this data
+into a Kafka stream using a *Producer* Python program. A *Consumer*
+Python program consumes data from the stream to produce JSON files
+with summary stats, for use on a web dashboard (you don't need to
+build the dashboard yourself). Later in the project, the consumer
+itself acts as a producer to populate certain messages into another
+Kafka topic. Finally, you will visualize some of the data collected by
+the consumer.
 
-For simplicity, we use a single Kafka broker instead of using a cluster. 
-A single producer will generate weather data in an infinite loop at an accelerated rate (1 day per 0.5 second). Finally, consumers will be different 
-threads, launching from the same Python script.
+For simplicity, we use a single Kafka broker instead of using a
+cluster.  A single producer will generate weather data in an infinite
+loop at an accelerated rate (1 day per 0.5 second). Finally, consumers
+will be different threads, launching from the same Python program.
 
 Learning objectives:
 * write code for Kafka producers
@@ -26,18 +30,18 @@ Learning objectives:
 Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
-* None
+* none yet
 
 ## Part 1: Kafka Producer
 
 ### Container setup
-Start by creating a `files` directory in your repository. Your python scripts and generated files must be stored in this directory.
+Start by creating a `files` directory in your repository. Your Python programs and generated files must be stored in this directory.
 Next, build a `p7` docker image with Kafka installed using the provided Dockerfile.
 Run the Kafka broker in the background using: `docker run -d -v ./files:/files p7`
 
-To setup the producer and consumer, create two Python scripts 
-named `producer.py` and `consumer.py` within `files`. To run the producer and consumer script, use: `docker exec -it <container_name> python3 <path_of_script>`. 
-This will run the script in the foreground, making it easier to debug. 
+To setup the producer and consumer, create two Python programs 
+named `producer.py` and `consumer.py` within `files`. To run the producer and consumer program, use: `docker exec -it <container_name> python3 <path_of_program>`. 
+This will run the program in the foreground, making it easier to debug. 
 
 ### Weather data generator
 Using the provided `weather.py` file, you can infinitely generate daily weather data starting from 1990-01-01 for a specific location (loosely modelled around weather of Dane County). Copy `weather.py` to your `files` directory and try generating some data using the following code snippet. This will generate the weather at an accelarated rate of 1 day per 0.5 second:
@@ -183,7 +187,7 @@ In the sample JSON, under "January" for the year "1990", the count is 31 (indica
 
 ### Creating Partition JSONs
 
-Within `consumer.py` Paste the following cell in your script so that everytime we re-run the script, 
+Within `consumer.py` Paste the following cell in your program so that everytime we re-run the program, 
 existing JSON and other generated files are deleted and we start from the same situation.
 
 ```python
@@ -370,7 +374,7 @@ while True:
 ### Atomic File Writes
 
 Remember that we're producing the JSON files so somebody else (not
-you) can use them to build a web dashboard. We are also using the JSON files to continously plot graphs. What if the dashboard app or the graph plotting script tries to read the JSON file at the same time your consumer is updating
+you) can use them to build a web dashboard. We are also using the JSON files to continously plot graphs. What if the dashboard app or the graph plotting program tries to read the JSON file at the same time your consumer is updating
 the file? It's possible the dashboard or plotting app could read an
 incomprehensible mix of old and new data.
 
@@ -411,9 +415,9 @@ docker build . -t p7
 # To run the kafka broker
 docker run -d -v ./files:/files p7
 
-# To run the producer script
+# To run the producer program
 docker exec -it <container_name> python3 /files/producer.py
-# To run the consumer script
+# To run the consumer program
 docker exec -it <container_name> python3 /files/consumer.py
 ```
 
