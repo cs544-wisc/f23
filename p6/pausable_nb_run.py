@@ -84,7 +84,7 @@ def read_args():
     return args
 
 
-def main(cell_timeout=120):
+def main(cell_timeout=180):
     global output_dir_name
 
     # Read the notebook
