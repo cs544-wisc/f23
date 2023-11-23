@@ -1,5 +1,3 @@
-# DRAFT!  Don't start yet.
-
 # P7 (6% of grade): Kafka, Weather Data
 
 ## Overview
@@ -20,16 +18,14 @@ loop at an accelerated rate (1 day per 0.5 second). Finally, consumers
 will be different processes, launching from the same Python program.
 
 Learning objectives:
-* write code for Kafka producers
-* write code for Kafka consumers
+* write code for Kafka producers and consumers
 * apply streaming techniques to achive "exactly once" semantics
-* write to different Kafka topics
 * use manual and automatic assignment of Kafka topics and partitions
-* ensure atomic writes to files
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
+
 * none yet
 
 ## Container setup
@@ -315,95 +311,81 @@ To avoid **overcounting**:
 * when a new consumer starts, it must start reading from the last offset (you can do this with `consumer.seek(????)`)
 * when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the `end` entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write. So retry could produce duplicates in the stream. To highlight this, the weather generation function has a 5% chance of generating a duplicated value, so keep this in mind. Other than these duplicated entries, you may assume all other messages are generated in order.
 
-## Part 4: Visualizing Yearly Trends
+## Part 4: Plotting Stats
 
-In this part, we will visualize the weather summary, for a given month, stored in the partition json files. Read the partition files to identify which file contains weather data for the month of **January**. For this month, plot a bar chart with its x-axis representing the years over which weather summary data exists. The y-axis should represent the average temperature for each year in January. Save the graph in the `files` directory under the name `yearly_trend.png`
+Create a `plot.py` program that we can run like this:
 
-Since data is continuously being produced in the background, your plot will keep getting outdated and will need refreshing. Use the below structure to re-generate the plot every 30 seconds to reflect the updated data in the generated png:
+```
+docker exec -it p7 python3 /files/plot.py
+```
+
+It should produce a `files/month.svg` file that looks something like
+this:
+
+![Month Averages](./month.svg "Month Averages")
+
+Here is some starter code:
 
 ```python
-target_month = "January"
-# TODO: Find path of partition file storing summary for January
-partition_file_with_tgt = ???
+import json, os
+import pandas as pd
+import matplotlib.pyplot as plt
+
+month_series = pd.Series({
+    'March': 47.478365000000004,
+    'February': 34.99720714285714,
+    'January': 37.26354516129032
+})
 
 fig, ax = plt.subplots()
-# Keep refreshing the plot after 5 seconds
-while True:
-    time.sleep(5)
-
-    try:
-      # TODO: Read January's yearly temperatures from 'partition_file_with_tgt'
-    except Exception as e:
-      print("Failed reading partition for January, retrying...")
-      continue    
-
-    # Clear the previous plot data
-    ax.clear()
-    # Update the plot with new data
-    ax.bar(x, y)
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Avg. Max Temperature for January')
-    ax.set_title('Avg. Max Temperatures per year')
-    plt.xticks(rotation=90)
-
-    # Save the plot
-    plt.savefig('/files/yearly_trends.png')
-    print("Refreshed Graph")
+month_series.plot.bar(ax=ax)
+ax.set_ylabel('Avg. Max Temperature')
+plt.tight_layout()
+plt.savefig("/files/month.svg")
 ```
 
-![Yearly trends plot](./yearly_trends.png "Yearly trends plot for January")
+Your job is to read data from the `partition-N.json` files instead of
+hardcoding the numbers.
 
-### Atomic File Writes
+Each bar indicates the average temperature for a month; when we have
+data for the same month across multiple years, use the most recent
+year.
 
-Remember that we're producing the JSON files so somebody else (not
-you) can use them to build a web dashboard. We are also using the JSON files to continously plot graphs. What if the dashboard app or the graph plotting program tries to read the JSON file at the same time your consumer is updating
-the file? It's possible the dashboard or plotting app could read an
-incomprehensible mix of old and new data.
-
-To prevent such partial writes, the proper technique is to write
-a new version of the data to a different file.  For example, say the
-original file is `F.txt` -- you might write the new version to
-`F.txt.tmp`.  After the new data has been completely written, you can
-rename F.txt.tmp to F.txt.  This atomically replaces the file
-contents. Anybody trying to read it will see all old data or all new
-data. Make these changes to your `save_dict_to_json` function that
-is responsible for saving summary JSON files
-
-```python
-path = ????
-path2 = path + ".tmp"
-with open(path2, "w") as f:
-    # TODO: write the data
-    os.rename(path2, path)
-```
-
-Note that this only provides atomicity when the system doesn't crash.
-If the computer crashes and restarts, it's possible some of the writes
-for the new file might only have been buffered in memory, not yet
-written to the storage device.  Feel free to read about `fsync` if
-you're curious about this scenario.
+Requirements:
+* you can hardcode that the partition numbers are 0-3
+* your code must work even if some of the JSON files do not exist
+* the order of the months along the x-axis doesn't matter
 
 ## Submission
-All your code and generated files (partition json files and graphs) should be in a directory named `files` within your repository.
-Your generated files (partition JSON files and graph) must contain data for atleast 3 years starting from 1990. You can speed up
-the rate at which records are generated by changing the `delay_sec` argument when calling `get_next_weather`.
 
-We should be able to run the following on your submission to build and run the required image:
+All your code and generated plot should be in a directory named
+`files` within your repository.
+
+We should be able to run the following on your submission to build and
+run the required image:
 
 ```
 # To build the image
 docker build . -t p7
 
 # To run the kafka broker
-docker run -d -v ./files:/files p7
+docker run -d -v ./files:/files --name=p7 p7
 
 # To run the producer program
-docker exec -it <container_name> python3 /files/producer.py
+docker exec -it p7 python3 /files/producer.py
+
+# To run the debug program
+docker exec -it p7 python3 /files/debug.py
+
 # To run the consumer program
-docker exec -it <container_name> python3 /files/consumer.py
+docker exec -it p7 python3 /files/consumer.py
+
+# To generate files/month.svg
+docker exec -it p7 python3 /files/plot.py
 ```
 
-Verify that your submission repo has a structure similar to this:
+Verify that your submission repo has a structure with at least the
+following committed:
 
 ```
 .
@@ -413,17 +395,15 @@ Verify that your submission repo has a structure similar to this:
     ├── consumer.py
     ├── debug.py
     ├── report.proto
-    ├── partition-0.json
-    ├── partition-1.json
-    ├── partition-2.json
-    ├── partition-3.json
-    ├── yearly_trends.png
     ├── report_pb2.ipynb
+    ├── month.svg    
     └── weather.py
 ```
 
-# Testing
-We will be using an autograder to verify your solution which you can run yourself by running the following command in the p7 directory:
+## Testing
+
+We will be using an autograder to verify your solution which you can
+run yourself by running the following command in the p7 directory:
 
 ```
 python3 autograde.py
