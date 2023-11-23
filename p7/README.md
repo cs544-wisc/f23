@@ -402,9 +402,4 @@ following committed:
 
 ## Testing
 
-We will be using an autograder to verify your solution which you can
-run yourself by running the following command in the p7 directory:
-
-```
-python3 autograde.py
-```
+We will release autograde.py soon!
