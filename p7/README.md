@@ -373,7 +373,6 @@ docker run -d -v ./files:/files --name=p7 p7
 
 # To run the producer program
 docker exec -it p7 python3 /files/producer.py
-<<<<<<< HEAD
 
 # To run the debug program
 docker exec -it p7 python3 /files/debug.py
@@ -383,12 +382,6 @@ docker exec -it p7 python3 /files/consumer.py
 
 # To generate files/month.svg
 docker exec -it p7 python3 /files/plot.py
-=======
-# To run the debug consumer
-docker exec -it p7 python3 /files/debug.py
-# To run the consumer program (for partition 0 and 2)
-docker exec -it p7 python3 /files/consumer.py 0 2
->>>>>>> b25773abb76dd85d70ae3f4386030527b8e8d388
 ```
 
 Verify that your submission repo has a structure with at least the
