@@ -12,7 +12,7 @@ be visualizing some of the data collected by the consumer.
 
 For simplicity, we use a single Kafka broker instead of using a
 cluster. A single producer will generate weather data (max temperature) 
-in an infinite loop at an accelerated rate of 1 day per 0.5 seconds 
+in an infinite loop at an accelerated rate of 1 day per 0.1 seconds 
 (you can change this during debugging). Finally, consumers will be 
 different processes, launching from the same Python program.
 
@@ -85,13 +85,13 @@ daily weather data starting from 1990-01-01 for a specific location
 (loosely modelled around weather of Dane County). Copy `weather.py` to
 your `files` directory and try generating some data using the
 following code snippet. This will generate the weather at a 
-rate of 1 day per 0.5 second:
+rate of 1 day per 0.1 second:
 
 ```python
 import weather
 
 # Runs infinitely because the weather never ends
-for date, degrees in weather.get_next_weather(delay_sec=0.5):
+for date, degrees in weather.get_next_weather(delay_sec=0.1):
     print(date, degrees) # date, max_temperature
 ```
 
