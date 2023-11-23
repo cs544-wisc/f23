@@ -7,15 +7,14 @@ weather data for a given location. Your task is to populate this data
 into a Kafka stream using a *producer* Python program. A *consumer*
 Python program consumes data from the stream to produce JSON files
 with summary stats, for use on a web dashboard (you don't need to
-build the dashboard yourself). Later in the project, the consumer
-itself acts as a producer to populate certain messages into another
-Kafka topic. Finally, you will visualize some of the data collected by
-the consumer.
+build the dashboard yourself). Later in the project, you will also
+be visualizing some of the data collected by the consumer.
 
 For simplicity, we use a single Kafka broker instead of using a
-cluster.  A single producer will generate weather data in an infinite
-loop at an accelerated rate (1 day per 0.5 second). Finally, consumers
-will be different processes, launching from the same Python program.
+cluster. A single producer will generate weather data (max temperature) 
+in an infinite loop at an accelerated rate of 1 day per 0.5 seconds 
+(you can change this during debugging). Finally, consumers will be 
+different processes, launching from the same Python program.
 
 Learning objectives:
 * write code for Kafka producers and consumers
@@ -30,7 +29,8 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Container setup
 
-Start by creating a `files` directory in your repository. Your Python programs and generated files must be stored in this directory.
+Start by creating a `files` directory in your repository. 
+Your Python programs and generated files must be stored in this directory.
 Next, build a `p7` docker image with Kafka installed using the provided Dockerfile.
 Run the Kafka broker in the background using:
 
@@ -39,7 +39,7 @@ docker run -d -v ./files:/files --name=p7 p7
 ```
 
 You'll be creating three programs, `producer.py`, `debug.py`, and
-`consumer.py`.  You can launch these in the container like this:
+`consumer.py`.  You can launch these in the same container as Kafka using:
 `docker exec -it p7 python3 /files/<path_of_program>`.  This will run
 the program in the foreground, making it easier to debug.
 
@@ -51,7 +51,7 @@ until manually killed.
 ### Topic Initialization
 
 Create a `files/producer.py` that creates a `temperatures` topic with 4
-partitions and 1 replica.  If the topic already existed, it should
+partitions and 1 replica. If the topic already existed, it should
 first be deleted.
 
 Feel free to use/adapt the following:
@@ -84,8 +84,8 @@ Using the provided `weather.py` file, you can infinitely generate
 daily weather data starting from 1990-01-01 for a specific location
 (loosely modelled around weather of Dane County). Copy `weather.py` to
 your `files` directory and try generating some data using the
-ufollowing code snippet. This will generate the weather at an
-accelarated rate of 1 day per 0.5 second:
+following code snippet. This will generate the weather at a 
+rate of 1 day per 0.5 second:
 
 ```python
 import weather
@@ -97,13 +97,13 @@ for date, degrees in weather.get_next_weather(delay_sec=0.5):
 
 Note: The above snippet is just for testing, don't include it in your submission.
 
-Instead of printing the weather, create a KafkaProducer to send the
+Next, instead of printing the weather, create a KafkaProducer to send the
 reports to the `temperatures` topic.
 
-For the value format, use protobufs.  To start, create a protobuf file
-`report.proto` in `files` with a `Report` message having the following
-entries, and build it to get a `???_pb2.py` file (review P3 for how to
-do this if necessary):
+For the Kafka message's value, encode the message as a gRPC protobuf.  
+For this, you'll need to create a protobuf file `report.proto` in `files` 
+with a `Report` message having the following fields, and build it to get 
+a `???_pb2.py` file (review P3 for how to do this if necessary):
 
 * string **date** (format "YYYY-MM-DD") - Date of the observation
 * double **degrees**: Observed max-temperature on this date
@@ -124,13 +124,13 @@ docker exec -d p7 python3 /files/producer.py
 
 ## Part 2: Kafka Debug Consumer
 
-Create a `files/debug.py` program that initializes a KafkaConsumer.  It
+Create a `files/debug.py` program that initializes a KafkaConsumer. It
 could be in a consumer group named "debug".
 
 The consumer should subscribe to the "temperatures" topic; let the
 broker automatically assign the partitions.
 
-The consumer should NOT seek to the beginning.  The consumer should
+The consumer should NOT seek to the beginning. The consumer should
 loop over messages forever, printing dictionaries corresponding to
 each message, like the following:
 
@@ -172,7 +172,7 @@ your consumer should first initialize it to `{"partition": N,
 "offset": 0}`.
 
 Your consumer should then load `partition-N.json` to a Python
-dictionary.  To manage each partition in memory, you might want a
+dictionary.  To manage each partition in memory, you might want
 another dictionary where each key is a partition number and each value
 is a dictionary with data for that partition.
 
@@ -373,6 +373,7 @@ docker run -d -v ./files:/files --name=p7 p7
 
 # To run the producer program
 docker exec -it p7 python3 /files/producer.py
+<<<<<<< HEAD
 
 # To run the debug program
 docker exec -it p7 python3 /files/debug.py
@@ -382,6 +383,12 @@ docker exec -it p7 python3 /files/consumer.py
 
 # To generate files/month.svg
 docker exec -it p7 python3 /files/plot.py
+=======
+# To run the debug consumer
+docker exec -it p7 python3 /files/debug.py
+# To run the consumer program (for partition 0 and 2)
+docker exec -it p7 python3 /files/consumer.py 0 2
+>>>>>>> b25773abb76dd85d70ae3f4386030527b8e8d388
 ```
 
 Verify that your submission repo has a structure with at least the
