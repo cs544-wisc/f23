@@ -400,6 +400,7 @@ def test_partition_json_creation():
     partition_offsets = dict()
 
     for _ in range(10):
+        error_msg = ""
         time.sleep(1)
         try:
             for i in range(4):
@@ -408,7 +409,8 @@ def test_partition_json_creation():
                         "p7-autograder-kafka", f"/files/partition-{i}.json"
                     )
                 except Exception as e:
-                    return f"Failed to generate and read /files/partition-{i}.json from within the container: {str(e)}"
+                    error_msg = str(e)
+                    break
                 partition_dict = json.loads(file_data)
                 for key in partition_dict:
                     if key not in ("partition", "offset"):
@@ -417,8 +419,12 @@ def test_partition_json_creation():
                 partition_offsets[partition_dict["partition"]] = partition_dict[
                     "offset"
                 ]
+            else:
+                break
         except Exception as e:
+            error_msg = str(e)
             pass
+    else: return f"Failed to generate and read /files/partition-{i}.json from within the container: {error_msg}"
 
     for month in MONTHS:
         if month not in months_seen:
