@@ -158,7 +158,9 @@ batch.
 
 `consumer.py` will use manual partition assignment.  If it is launched
 as `docker exec -it p7 python3 /files/consumer.py 0 2`, it should
-assign partitions 0 and 2 of the `temperatures` topic.
+assign partitions 0 and 2 of the `temperatures` topic. Try out different
+setups for the consumers e.g. two consumer processes with two partitions
+each. Make sure you don't miss out any partition when running your consumers.
 
 Overview:
 * there are 12 months but only 4 partitions, so naturally some partitions will correspond to data from multiple months
