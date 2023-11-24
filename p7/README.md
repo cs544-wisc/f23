@@ -354,7 +354,7 @@ partition JSON; when we have data for the same month across multiple years,
 use the most recent year.
 
 Requirements:
-* you can hardcode that the partition numbers are 0-3
+* you can hardcode that the partition numbers are 0-3. Do not hardcode the names of the files which contain the data for the three months we need, instead find them by iterating over the partition files
 * your code must work even if some of the JSON files do not exist
 * the order of the months along the x-axis doesn't matter
 
