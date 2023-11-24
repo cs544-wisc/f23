@@ -320,8 +320,9 @@ Create a `plot.py` program that we can run like this:
 docker exec -it p7 python3 /files/plot.py
 ```
 
-It should produce a `files/month.svg` file that looks something like
-this:
+It should produce a `files/month.svg` file that has the average max-temperature
+for the latest recorded year of "January", "February", and "March". 
+It should looks something like this:
 
 ![Month Averages](./month.svg "Month Averages")
 
@@ -348,9 +349,9 @@ plt.savefig("/files/month.svg")
 Your job is to read data from the `partition-N.json` files instead of
 hardcoding the numbers.
 
-Each bar indicates the average temperature for a month; when we have
-data for the same month across multiple years, use the most recent
-year.
+Each bar indicates the average max-temperature for a month stored in the
+partition JSON; when we have data for the same month across multiple years, 
+use the most recent year.
 
 Requirements:
 * you can hardcode that the partition numbers are 0-3
