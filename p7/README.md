@@ -329,7 +329,6 @@ It should looks something like this:
 Here is some starter code:
 
 ```python
-import json, os
 import pandas as pd
 import matplotlib.pyplot as plt
 
