@@ -1,6 +1,8 @@
 from tester import *
 import os
+from datetime import datetime
 import time
+import re
 import subprocess
 import concurrent.futures
 import json
@@ -40,7 +42,7 @@ def get_environment():
 
 
 def log(s):
-    print(f"\r|------------- {s}", end="\n", flush=True)
+    print(f"\r|--------------- {s}", end="\n", flush=True)
 
 
 def restart_kafka():
@@ -101,23 +103,25 @@ def run_producer():
         raise Exception("Failed to run producer script:" + str(e))
 
 
-def run_consumer():
-    try:
-        result = subprocess.run(
-            [
+def run_consumer(partition_nums):
+    args = [
                 "docker",
                 "exec",
                 "-d",
                 "p7-autograder-kafka",
                 "python3",
                 "/files/consumer.py",
-            ],
+            ]
+    for p in partition_nums: args.append(str(p))
+    try:
+        result = subprocess.run(
+            args,
             check=True,
         )
         if result.returncode != 0:
-            raise Exception("Failed to run consumer script")
+            raise Exception("Failed to run consumer script for partitions:", partition_nums)
     except subprocess.CalledProcessError as e:
-        raise Exception("Failed to run consumer script:" + str(e))
+        raise Exception("Failed to run consumer script:" + str(e) + "partitions:", partition_nums)
 
 
 def delete_temp_dir():
@@ -168,6 +172,11 @@ def run_in_docker(container_name, command):
     )
     return result.stdout
 
+def is_day_count_valid(data):
+    date2 = datetime.strptime(data['end'], "%Y-%m-%d")
+    date1 = datetime(date2.year, date2.month, 1)
+    delta = (date2 - date1).days + 1
+    return data['count'] == delta
 
 @cleanup
 def _cleanup(*args, **kwargs):
@@ -184,7 +193,7 @@ def init(*args, **kwargs):
 
 
 # Test all required files present
-@test(1)
+@test(5)
 def test_all_files_present():
     files_dir = "files/"
     expected_files = ["Dockerfile"] + [
@@ -192,14 +201,12 @@ def test_all_files_present():
         for p in (
             "producer.py",
             "consumer.py",
+            "debug.py",
+            "plot.py",
             "report.proto",
             "weather.py",
-            "partition-0.json",
-            "partition-1.json",
-            "partition-2.json",
-            "partition-3.json",
             "report_pb2.py",
-            "yearly_trends.png",
+            "month.svg",
         )
     ]
 
@@ -211,7 +218,7 @@ def test_all_files_present():
 
 
 # Test p7 image builds
-@test(1)
+@test(5)
 def test_p7_image_builds():
     log("Running Test: build P7 image...")
     try:
@@ -224,14 +231,28 @@ def test_p7_image_builds():
 
 
 # Check p7 container runs
-@test(1)
+@test(5)
 def test_p7_image_runs():
     log("Running Test: running P7 container...")
     restart_kafka()
 
+# Check KafkaProducer(..., acks='all', retries=10)
+@test(5)
+def test_producer_configs():
+    with open("files/producer.py", "r") as f:
+        producer_content = f.read()
+        
+        p1 = r'KafkaProducer.*\(.*acks\s*\=\s*all.*retries\s*\=\s*10\)'
+        p2 = r'KafkaProducer.*\(.*retries\s*\=\s*10.*acks\s*\=\s*all\)'
+        
+        match_p1 = re.search(p1, producer_content)
+        match_p2 = re.search(p2, producer_content)
+
+        if not match_p1 and match_p2:
+            return "Have you set the producers 'acks' and 'retries'? Couldn't find: KafkaProducer(..., acks='all', retries=10) in producer.py"
 
 # Test producer: check all topics created
-@test(1)
+@test(10)
 def test_topics_created():
     log("Running Test: check producer creates all topics...")
     try:
@@ -247,7 +268,7 @@ def test_topics_created():
     for _ in range(30):
         admin_client = KafkaAdminClient(bootstrap_servers=["localhost:9092"])
         try:
-            if set(admin_client.list_topics()) == {"temperatures"}:
+            if "temperatures" in set(admin_client.list_topics()):
                 break
         except Exception as e:
             time.sleep(1)
@@ -271,7 +292,7 @@ def test_topics_created():
 
 
 # test producer as consumer
-@test(1)
+@test(10)
 def test_producer_messages():
     log("Running Test: checking 'temperatures' stream...")
 
@@ -298,7 +319,7 @@ def test_producer_messages():
 
 
 # test proto generation
-@test(1)
+@test(5)
 def test_proto_build():
     log("Running Test: testing proto file ...")
 
@@ -324,7 +345,7 @@ def test_proto_build():
         raise Exception("Failed to compile report.proto:" + str(e))
 
 
-@test(1)
+@test(10)
 def test_debug_consumer_output():
     log("Running Test: testing debug.py ...")
 
@@ -341,14 +362,13 @@ def test_debug_consumer_output():
                 )  # Convert single quotes to double quotes for valid JSON
                 if all(key in data for key in ["partition", "key", "date", "degrees"]):
                     return
+                else: return "Invalid keys in the output of debug.py. Keys must be: 'partition','key','date','degrees'"
             except Exception as e:
-                pass
-        return (
-            "Couldn't find a valid ouput when running debug.py (verify all keys match)"
-        )
+                return "Invalid line in debug.py output: " + str(line)
+        return "Couldn't find the expected ouput when running debug.py"
 
 
-@test(1)
+@test(10)
 def test_consumer_runs():
     log("Running Test: running consumer ...")
 
@@ -357,20 +377,20 @@ def test_consumer_runs():
         try:
             for i in range(4):
                 run_in_docker("p7-autograder-kafka", f"rm -rf /files/partition-{i}.json")
-            run_in_docker("p7-autograder-kafka", "rm -rf /files/yearly_trends.png")
+            run_in_docker("p7-autograder-kafka", "rm -rf /files/month.svg")
             break
         except Exception as e:
             pass
     else:
-        return "Failed to setup consumer. Make sure your partition files are in /files in the container"
+        return "Failed to setup consumer. Make sure your partition files are in a 'files' dir"
 
     try:
-        run_consumer()
+        run_consumer([0,1,2,3])
     except Exception as e:
         return "Failed to run consumer.py: " + str(e)
 
 
-@test(1)
+@test(10)
 def test_partition_json_creation():
     log("Running Test: testing partition files ...\n")
     global MONTHS
@@ -412,7 +432,7 @@ def test_partition_json_creation():
 
 
 # Validate contents of partition files generated
-@test(1)
+@test(15)
 def test_partition_json_contents():
     log("Running Test: validating partition files ...\n")
     
@@ -439,8 +459,47 @@ def test_partition_json_contents():
                         return f"{month}-{year} has more than 31 days. Make sure you don't overcount messages"
                     if partition_dict[month][year]["avg"] > 1000:
                         return f"{month}-{year} avg. temperature is {partition_dict[month][year]['avg']}, yikes! Make sure duplicate messages are ignored"
+                    if not is_day_count_valid(partition_dict[month][year]):
+                        return f"{month}-{year} has an invalid 'count' when compared to 'start' and 'end' dates"
+                        
         else: return
     return f"Failed to read /files/partition-{i}.json inside the container."
 
+@test(10)
+def test_plot_generation():
+    for _ in range(10):
+        try:
+            run_in_docker("p7-autograder-kafka", "python3 /files/plot.py")
+            break
+        except Exception as e:
+            pass
+        
+    patterns = [r'January-\d{4}', r'February-\d{4}', r'March-\d{4}']
+    
+    plot_data = read_file_from_docker("p7-autograder-kafka", "/files/month.svg")
+    old_years = dict()
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, plot_data)
+        if len(matches) == 0: return f"Couldn't find pattern {pattern} in month.svg"
+        old_years[matches[0].split("-")[0]] = int(matches[0].split("-")[1]) 
+    
+    time.sleep(5) # Wait for atleast one year
+    
+    for _ in range(10):
+        try:
+            run_in_docker("p7-autograder-kafka", "python3 /files/plot.py")
+            break
+        except Exception as e:
+            pass
+        
+    plot_data = read_file_from_docker("p7-autograder-kafka", "/files/month.svg")
+    for pattern in patterns:
+        matches = re.findall(pattern, plot_data)
+        if len(matches) == 0: return f"Couldn't find pattern {pattern} in month.svg on re-running plot.py"
+        if int(matches[0].split("-")[1]) <= old_years[matches[0].split("-")[0]]:
+            return "Plot doesn't seem to be updating on re-running"
+
 if __name__ == "__main__":
     tester_main()
+
