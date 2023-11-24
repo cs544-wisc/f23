@@ -391,8 +391,9 @@ following committed:
 ├── Dockerfile
 └── files
     ├── producer.py
-    ├── consumer.py
     ├── debug.py
+    ├── consumer.py
+    ├── plot.py
     ├── report.proto
     ├── report_pb2.ipynb
     ├── month.svg    
