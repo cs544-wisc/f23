@@ -1,5 +1,3 @@
-# DRAFT!  Don't start yet.
-
 # P7 (6% of grade): Kafka, Weather Data
 
 ## Overview
@@ -14,21 +12,19 @@ be visualizing some of the data collected by the consumer.
 
 For simplicity, we use a single Kafka broker instead of using a
 cluster. A single producer will generate weather data (max temperature) 
-in an infinite loop at an accelerated rate of 1 day per 0.5 seconds 
+in an infinite loop at an accelerated rate of 1 day per 0.1 seconds 
 (you can change this during debugging). Finally, consumers will be 
 different processes, launching from the same Python program.
 
 Learning objectives:
-* write code for Kafka producers
-* write code for Kafka consumers
+* write code for Kafka producers and consumers
 * apply streaming techniques to achive "exactly once" semantics
-* write to Kafka topics
 * use manual and automatic assignment of Kafka topics and partitions
-* ensure atomic writes to files
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
+
 * none yet
 
 ## Container setup
@@ -76,8 +72,7 @@ except UnknownTopicOrPartitionError:
 
 time.sleep(3) # Deletion sometimes takes a while to reflect
 
-temperatures_topic = NewTopic(name="temperatures", num_partitions=4, replication_factor=1)
-admin_client.create_topics([temperatures_topic])
+# TODO: Create topic 'temperatures' with 4 partitions and replication factor = 1
 
 print("Topics:", admin_client.list_topics())
 ```
@@ -89,13 +84,13 @@ daily weather data starting from 1990-01-01 for a specific location
 (loosely modelled around weather of Dane County). Copy `weather.py` to
 your `files` directory and try generating some data using the
 following code snippet. This will generate the weather at a 
-rate of 1 day per 0.5 second:
+rate of 1 day per 0.1 second:
 
 ```python
 import weather
 
 # Runs infinitely because the weather never ends
-for date, degrees in weather.get_next_weather(delay_sec=0.5):
+for date, degrees in weather.get_next_weather(delay_sec=0.1):
     print(date, degrees) # date, max_temperature
 ```
 
@@ -163,7 +158,9 @@ batch.
 
 `consumer.py` will use manual partition assignment.  If it is launched
 as `docker exec -it p7 python3 /files/consumer.py 0 2`, it should
-assign partitions 0 and 2 of the `temperatures` topic.
+assign partitions 0 and 2 of the `temperatures` topic. Try out different
+setups for the consumers e.g. two consumer processes with two partitions
+each. Make sure you don't miss out any partition when running your consumers.
 
 Overview:
 * there are 12 months but only 4 partitions, so naturally some partitions will correspond to data from multiple months
@@ -315,88 +312,99 @@ To avoid **overcounting**:
 * when a new consumer starts, it must start reading from the last offset (you can do this with `consumer.seek(????)`)
 * when a consumer reads a message, it should ignore it if the date is <= the previous date processed (the `end` entry in the station dict will help with this).  Remember that producers retry when they don't get an ack, but it's possible for an ack to be lost after a successful write. So retry could produce duplicates in the stream. To highlight this, the weather generation function has a 5% chance of generating a duplicated value, so keep this in mind. Other than these duplicated entries, you may assume all other messages are generated in order.
 
-## Part 4: Visualizing Yearly Trends
+## Part 4: Plotting Stats
 
-In this part, we will visualize the weather summary, for a given month, stored in the partition json files. Read the partition files to identify which file contains weather data for the month of **January**. For this month, plot a bar chart with its x-axis representing the years over which weather summary data exists. The y-axis should represent the average temperature for each year in January. Save the graph in the `files` directory under the name `yearly_trend.png`
+Create a `plot.py` program that we can run like this:
 
-Since data is continuously being produced in the background, your plot will keep getting outdated and will need refreshing. Use the below structure to re-generate the plot every 30 seconds to reflect the updated data in the generated png:
-
-```python
-target_month = "January"
-# TODO: Find path of partition file storing summary for January
-partition_file_with_tgt = ???
-
-fig, ax = plt.subplots()
-# Keep refreshing the plot after 5 seconds
-while True:
-    time.sleep(30)
-
-    try:
-      # TODO: Read January's yearly temperatures from 'partition_file_with_tgt'
-    except Exception as e:
-      print("Failed reading partition for January, retrying...")
-      continue    
-
-    # Clear the previous plot data
-    ax.clear()
-    # Update the plot with new data
-    ax.bar(x, y)
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Avg. Max Temperature for January')
-    ax.set_title('Avg. Max Temperatures per year')
-    plt.xticks(rotation=90)
-
-    # Save the plot
-    plt.savefig('/files/yearly_trends.png')
-    print("Refreshed Graph")
+```
+docker exec -it p7 python3 /files/plot.py
 ```
 
-![Yearly trends plot](./yearly_trends.png "Yearly trends plot for January")
+It should produce a `files/month.svg` file that has the average max-temperature
+for the latest recorded year of "January", "February", and "March". 
+It should looks something like this:
+
+![Month Averages](./month.svg "Month Averages")
+
+Here is some starter code:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+month_series = pd.Series({
+    'March': 47.478365000000004,
+    'February': 34.99720714285714,
+    'January': 37.26354516129032
+})
+
+fig, ax = plt.subplots()
+month_series.plot.bar(ax=ax)
+ax.set_ylabel('Avg. Max Temperature')
+plt.tight_layout()
+plt.savefig("/files/month.svg")
+```
+
+Your job is to read data from the `partition-N.json` files instead of
+hardcoding the numbers.
+
+Each bar indicates the average max-temperature for a month stored in the
+partition JSON; when we have data for the same month across multiple years, 
+use the most recent year.
+
+Requirements:
+* you can hardcode that the partition numbers are 0-3. Do not hardcode the names of the files which contain the data for the three months we need, instead find them by iterating over the partition files
+* your code must work even if some of the JSON files do not exist
+* the order of the months along the x-axis doesn't matter
 
 ## Submission
-All your code and generated files (partition json files and graphs) should be in a directory named `files` within your repository.
-Your generated files (partition JSON files and graph) must contain data for atleast 3 years starting from 1990. You can speed up
-the rate at which records are generated by changing the `delay_sec` argument when calling `get_next_weather`.
 
-We should be able to run the following on your submission to build and run the required image:
+All your code and generated plot should be in a directory named
+`files` within your repository.
+
+We should be able to run the following on your submission to build and
+run the required image:
 
 ```
 # To build the image
 docker build . -t p7
 
 # To run the kafka broker
-docker run -d -v ./files:/files p7
+docker run -d -v ./files:/files --name=p7 p7
 
 # To run the producer program
 docker exec -it p7 python3 /files/producer.py
-# To run the debug consumer
+
+# To run the debug program
 docker exec -it p7 python3 /files/debug.py
-# To run the consumer program (for partition 0 and 2)
+
+# To run the consumer program (for partition 0, 2)
 docker exec -it p7 python3 /files/consumer.py 0 2
+
+# To generate files/month.svg
+docker exec -it p7 python3 /files/plot.py
 ```
 
-Verify that your submission repo has a structure similar to this:
+Verify that your submission repo has a structure with at least the
+following committed:
 
 ```
 .
 ├── Dockerfile
 └── files
     ├── producer.py
-    ├── consumer.py
     ├── debug.py
+    ├── consumer.py
+    ├── plot.py
     ├── report.proto
-    ├── partition-0.json
-    ├── partition-1.json
-    ├── partition-2.json
-    ├── partition-3.json
-    ├── yearly_trends.png
-    ├── report_pb2.ipynb
+    ├── report_pb2.py
+    ├── month.svg    
     └── weather.py
 ```
 
-# Testing
-We will be using an autograder to verify your solution which you can run yourself by running the following command in the p7 directory:
+## Testing
 
-```
+Run the autograder using:
+```python
 python3 autograde.py
 ```

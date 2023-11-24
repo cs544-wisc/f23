@@ -1,3 +1,7 @@
+#################################
+########## DO NOT EDIT ########## 
+#################################
+
 import datetime, random, time, os
 
 def get_next_weather_main():
