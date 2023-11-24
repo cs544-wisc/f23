@@ -397,11 +397,14 @@ following committed:
     ├── consumer.py
     ├── plot.py
     ├── report.proto
-    ├── report_pb2.ipynb
+    ├── report_pb2.py
     ├── month.svg    
     └── weather.py
 ```
 
 ## Testing
 
-We will release autograde.py soon!
+Run the autograder using:
+```python
+python3 autograde.py
+```
