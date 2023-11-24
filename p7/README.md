@@ -72,8 +72,7 @@ except UnknownTopicOrPartitionError:
 
 time.sleep(3) # Deletion sometimes takes a while to reflect
 
-temperatures_topic = NewTopic(name="temperatures", num_partitions=4, replication_factor=1)
-admin_client.create_topics([temperatures_topic])
+# TODO: Create topic 'temperatures' with 4 partitions and replication factor = 1
 
 print("Topics:", admin_client.list_topics())
 ```
