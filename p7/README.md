@@ -403,8 +403,12 @@ following committed:
 ```
 
 ## Testing
+To run the autograder, you'll need to have `kafka-python` and `grpcio-tools` installed on your VM. To do so, run the following command: 
+```
+pip3 install kafka-python==2.0.2 grpcio-tools
+```
 
-Run the autograder using:
+Afterwards, you can run the autograder using:
 ```python
 python3 autograde.py
 ```
