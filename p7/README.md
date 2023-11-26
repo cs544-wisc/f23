@@ -25,7 +25,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
 
-* none yet
+* Nov 24: autograder.py added.
 
 ## Container setup
 
