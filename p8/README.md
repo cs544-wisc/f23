@@ -51,17 +51,17 @@ gcloud auth application-default login --scopes=openid,https://www.googleapis.com
 1. While running the command, it will ask you to paste some link to your browser. If you have multiple Google accounts in your browser, and do not want this to select the default one, then do the following: 
     * paste the link in a incognito mode
     * login to the Google account of your choice
-2. Be careful, because if a malicous party were to gain access to your
+2. **Be careful**, because if a malicous party were to gain access to your
 VM, they would have free access to all your Google Drive files (and
 more).  For example, if your Jupyter is listening publicly (i.e.,
 0.0.0.0 instead of localhost) and you have a weak password (or no
 password), someone could gain access to your VM, and then these other
-resources.**
+resources.
 
 When you're not actively working, you may want to revoke (take away)
 the permissions your VM has to minimize risk:
 
-```
+```bash
 gcloud auth application-default revoke
 ```
 
@@ -69,7 +69,7 @@ gcloud auth application-default revoke
 
 Clone your project-8 repo from Github to your VM. Inside your VM's repository folder, run the following command:
 
-```
+```bash
 python3 -m jupyterlab --no-browser --ip=localhost --port=5000 --allow-root --NotebookApp.token=''
 ```
 
@@ -197,8 +197,9 @@ cleanup and conversion work for you to make the parquet file -- [see
 here](cleanup.md) if you're interested about what exactly we've done.
 
 <!-- TODO: should we specify a name? -->
-Create a private GCS bucket (named whatever you like).  Upload the
-parquet file to your bucket.
+Do the following two tasks outside your `p8.ipynb` notebook:
+1. Create a private GCS bucket (named whatever you like, for example: `cs544_p8`). 
+2. Upload the parquet file to your bucket.
 
 Write code to create a dataset called `p8` in your GCP project.  Use
 `exists_ok=True` so that you can re-run your code without errors.
@@ -248,24 +249,24 @@ Now lets pretend you have a very lucrative data science job and want to buy a va
 
 <!--- TODO: New Form Link. Check. -->
 Apply for your loan in the Google form here:
-https://forms.gle/nMizprMmaegQsTKi7.  Feel free to apply multiple
+https://forms.gle/cf1R26MoGCmMriAN9. Feel free to apply multiple
 times if a single vacation home is insufficient for your needs.
 
 <!--- TODO: New Sheet Link. Check. -->
-The form is linked to this spreadsheet (check that your loan applications show up): https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo
+The form is linked to this spreadsheet (check that your loan applications show up): https://docs.google.com/spreadsheets/d/11UeIBqQylAyNUBsIO54p6WiYJWHayQMfHDbUWq1jGco/
 
 Now run some code to add the sheet as an external BigQuery table. The name of the table must be `applications`
 
 <!--- TODO: New Sheet Link. Check. -->
 ```python
-url = "https://docs.google.com/spreadsheets/d/1Z8dG4pwnfR3Xx-Oz68Eay_NToGpThm1IMyfRqv8ybLo"
+url = "https://docs.google.com/spreadsheets/d/11UeIBqQylAyNUBsIO54p6WiYJWHayQMfHDbUWq1jGco/"
 
 external_config = bigquery.ExternalConfig("GOOGLE_SHEETS")
 external_config.source_uris = [????]
 external_config.options.skip_leading_rows = 1
 external_config.autodetect = ????
 
-table = bigquery.Table(dataset.table(????))
+table = bigquery.Table(????.table(????))
 table.external_data_configuration = external_config
 
 table = bq.create_table(table, exists_ok=True)
@@ -285,11 +286,11 @@ spreadsheet.
 Answer with a dict like this (key is county name and value is count):
 
 ```python
-{'Dane': 2, ...}
+{'Dane': 1, ...}
 ```
 
 Ignore any lat/lon points that get submitted to the form but fall
-outside of WI.  The FIPS code (`state_fips_code`) for WI is '55' --
+outside of WI.  The FIPS code (`state_fips_code`) for WI is `'55'` --
 feel free to hardcode 55 in your query if it helps.
 
 ## Part 4: Machine Learning
@@ -305,6 +306,9 @@ overfitting doesn't give you an unrealistically good score -- to keep
 the project simple, we aren't bothering with train/test splits this
 time.
 
+<!-- TODO: Added this to clarify -->
+**Note:** If you encounter an error like `NotFound: 404 Not found: Model <project>:<dataset>.<model>`, wait for a minute. Sometimes it takes 1-2 minutes for BigQuery to notice that a model has been created.
+
 #### Q9: what is the coefficient weight on the income column?
 
 #### Q10: what ratio of the loan applications in the Google form are for amounts greater than the model would predict, given income?
@@ -314,6 +318,9 @@ For example, if 75% are greater, the answer would be 0.75.
 Note that the model has two features: `income` and `loan_term`; the form
 only collects income, so assume the loan term is 360 months (30 years)
 for all the applications in the Google sheet.
+
+<!-- TODO: Added this to clarify -->
+Autograder will check if your answer for Q10 is within reasonable bounds. However, we will take a look at your code while grading.
 
 ## Grading:
 
@@ -325,7 +332,6 @@ Run the command above to estimate your grade.  In general, this
 will be your grade unless there is a serious issue such as hardcoding
 or a code that isn't close but happens to produce a result in the
 acceptable range. 
-<!-- Please reach out to Kalpit for any questions/suggestions. -->
 
 ## Submission
 
