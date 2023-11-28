@@ -13,4 +13,6 @@ RUN wget https://downloads.apache.org/kafka/3.6.0/kafka_2.13-3.6.0.tgz && tar -x
 # from bin/kafka-storage.sh random-uuid
 ENV KAFKA_CLUSTER_ID=dCHffFWYTCKWXiesmJMN9w
 
+COPY ./files /files/
+
 CMD sh -c "cd /kafka_2.13-3.6.0 && bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties"
