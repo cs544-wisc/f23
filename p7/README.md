@@ -334,9 +334,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 month_series = pd.Series({
-    'March': 47.478365000000004,
-    'February': 34.99720714285714,
-    'January': 37.26354516129032
+    'March-2009': 47.478365000000004,
+    'February-2010': 34.99720714285714,
+    'January-2010': 37.26354516129032
 })
 
 fig, ax = plt.subplots()
