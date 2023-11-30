@@ -27,6 +27,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 * Nov 24: autograder.py added.
 * Nov 28: autograder bugfix: Added COPY statement to Dockerfile (required to run autograder correctly)
+* Nov 30: autograder update: Increase timeouts and delays to ensure consistent test results
 
 ## Container setup
 
