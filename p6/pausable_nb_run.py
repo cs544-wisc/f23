@@ -45,7 +45,7 @@ class PartExecutor(ExecutePreprocessor):
             # Determine if we should pause or not
             should_pause, pause_file_name = False, None
             for expected_txt in self.pause_text:
-                if expected_txt in cell_contents:
+                if expected_txt in cell_contents.lower():
                     should_pause = True
                     pause_file_name = expected_txt.replace("#", "") + ".cell"
                     break
