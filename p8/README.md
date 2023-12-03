@@ -325,7 +325,7 @@ for all the applications in the Google sheet.
 Run the following to check that your cell outputs are reasonable:
 
 ```bash
-python3 autograder.py
+python3 autograde.py
 ```
 
 It's OK if you hardcode some things in your notebook related to your

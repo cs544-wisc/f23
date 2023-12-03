@@ -20,6 +20,11 @@ def parse_bool_output(outputs):
         raise Exception("Error parsing output as bool")
     return eval_output
 
+def parse_list_output(outputs):
+    eval_output = eval(parse_str_output(outputs))
+    if type(eval_output) is not list:
+        raise Exception("Error parsing output as list")
+    return eval_output
 
 def parse_dict_bool_output(outputs):
     # parse outputs as a dictionary of {str: bool}
@@ -45,6 +50,19 @@ def parse_dict_float_output(outputs):
             raise Exception("Error parsing output as float dict")
         if type(eval_output[key]) is not float:
             raise Exception("Error parsing output as float dict")
+    return eval_output
+
+def parse_dict_int_output(outputs):
+    # parse outputs as a dictionary of {str: int}
+    eval_output = eval(parse_str_output(outputs))
+    if type(eval_output) is not dict:
+        raise Exception("Error parsing output as dict")
+    
+    for key in eval_output.keys():
+        if type(key) is not str:
+            raise Exception("Error parsing output as int dict")
+        if type(eval_output[key]) is not int:
+            raise Exception("Error parsing output as int dict")
     return eval_output
 
 def is_accurate(lower, actual):
@@ -119,6 +137,16 @@ def compare_dict_bools(expected, actual):
 
     for key in expected.keys():
         if not compare_bool(expected[key], actual[key]):
+            return False
+            
+    return True
+
+def compare_dict_ints(expected, actual):
+    if expected.keys() != actual.keys():
+        return False
+
+    for key in expected.keys():
+        if not compare_int(expected[key], actual[key]):
             return False
             
     return True
