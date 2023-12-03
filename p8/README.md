@@ -212,6 +212,8 @@ Use this line of code to answer:
 [ds.dataset_id for ds in bq.list_datasets("????")] # PASTE your project name
 ```
 
+You can see the GCP projects you own here: https://console.cloud.google.com/billing/projects
+
 The output ought to contain the `p8` dataset.
 
 #### Q5: how many loan applications are there in the HDMA data for each county?
