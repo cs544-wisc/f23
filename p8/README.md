@@ -320,7 +320,7 @@ Note that the model has two features: `income` and `loan_term`; the form
 only collects income, so assume the loan term is 360 months (30 years)
 for all the applications in the Google sheet.
 
-## Testing:
+## Testing
 
 Run the following to check that your cell outputs are reasonable:
 
