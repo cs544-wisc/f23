@@ -349,6 +349,8 @@ def test_proto_build():
 @test(10)
 def test_debug_consumer_output():
     log("Running Test: testing debug.py ...")
+    
+    time.sleep(10)
 
     out_file = "q7.out"
     save_cmd_output(
@@ -400,7 +402,7 @@ def test_partition_json_creation():
     part_nums_seen = set()
     partition_offsets = dict()
 
-    for _ in range(10):
+    for _ in range(15):
         error_msg = ""
         time.sleep(1)
         try:
@@ -476,6 +478,7 @@ def test_partition_json_contents():
 def test_plot_generation():
     for _ in range(10):
         try:
+            time.sleep(1)
             run_in_docker("p7-autograder-kafka", "python3 /files/plot.py")
             break
         except Exception as e:
