@@ -6,11 +6,15 @@ import os
 
 ANSWERS = {}  # global variable to store answers { key = question number, value = output of the answer cell }
 
+FILE_NOT_FOUND = False
+
 
 @init
 def collect_cells(*args, **kwargs):
+    global FILE_NOT_FOUND
     if not os.path.exists('p8.ipynb'):
-        raise Exception(f"Cannot find p8.ipynb")
+        FILE_NOT_FOUND = True
+        return 
 
     with open("p8.ipynb") as f:
         nb = json.load(f)  # load the notebook as a json object
@@ -59,8 +63,9 @@ def collect_cells(*args, **kwargs):
 
 @test(points=10)
 def q1():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 1 in ANSWERS:
-        raise Exception("Answer to question 1 not found")
+        return "ERROR: Answer to question 1 not found"
     outputs = ANSWERS[1]
 
     output = nbutils.parse_str_output(outputs)
@@ -70,8 +75,9 @@ def q1():
 
 @test(points=10)
 def q2():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 2 in ANSWERS:
-        raise Exception("Answer to question 2 not found")
+        return "ERROR: Answer to question 2 not found"
     outputs = ANSWERS[2]
 
     output = nbutils.parse_dict_int_output(outputs)
@@ -83,8 +89,9 @@ def q2():
 
 @test(points=10)
 def q3():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 3 in ANSWERS:
-        raise Exception("Answer to question 3 not found")
+        return "ERROR: Answer to question 3 not found"
     outputs = ANSWERS[3]
 
     output = nbutils.parse_dict_float_output(outputs)
@@ -97,8 +104,9 @@ def q3():
 
 @test(points=10)
 def q4():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 4 in ANSWERS:
-        raise Exception("Answer to question 4 not found")
+        return "ERROR: Answer to question 4 not found"
     outputs = ANSWERS[4]
     
     output = nbutils.parse_list_output(outputs)
@@ -108,8 +116,9 @@ def q4():
 
 @test(points=10)
 def q5():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 5 in ANSWERS:
-        raise Exception("Answer to question 5 not found")
+        return "ERROR: Answer to question 5 not found"
     outputs = ANSWERS[5]
     
     output = nbutils.parse_dict_int_output(outputs)
@@ -132,8 +141,9 @@ def q5():
 
 @test(points=10)
 def q6():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 6 in ANSWERS:
-        raise Exception("Answer to question 6 not found")
+        return "ERROR: Answer to question 6 not found"
     outputs = ANSWERS[6]
 
     output = nbutils.parse_int_output(outputs)
@@ -143,8 +153,9 @@ def q6():
 
 @test(points=10)
 def q7():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 7 in ANSWERS:
-        raise Exception("Answer to question 7 not found")
+        return "ERROR: Answer to question 7 not found"
     outputs = ANSWERS[7]
     
     output = nbutils.parse_dict_int_output(outputs)
@@ -177,8 +188,9 @@ def q7():
 
 @test(points=10)
 def q8():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 8 in ANSWERS:
-        raise Exception("Answer to question 8 not found")
+        return "ERROR: Answer to question 8 not found"
     outputs = ANSWERS[8]
     
     output = nbutils.parse_float_output(outputs)
@@ -188,8 +200,9 @@ def q8():
 
 @test(points=10)
 def q9():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 9 in ANSWERS:
-        raise Exception("Answer to question 9 not found")
+        return "ERROR: Answer to question 9 not found"
     outputs = ANSWERS[9]
     
     output = nbutils.parse_float_output(outputs)
@@ -199,8 +212,9 @@ def q9():
 
 @test(points=10)
 def q10():
+    if FILE_NOT_FOUND: return "ERROR: File p8.ipynb not found"
     if not 10 in ANSWERS:
-        raise Exception("Answer to question 10 not found")
+        return "ERROR: Answer to question 10 not found"
     outputs = ANSWERS[10]
     
     output = nbutils.parse_float_output(outputs)
