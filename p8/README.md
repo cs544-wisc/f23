@@ -330,7 +330,7 @@ for all the applications in the Google sheet.
 
 ## Testing
 
-Download the latest `tester.py`, `nbutils.py` and `autograde.py`. Run the following to check that your cell outputs are reasonable:
+Download the latest [`tester.py`](../tester.py), [`nbutils.py`](../nbutils.py) and [`autograde.py`](./autograde.py). Run the following to check that your cell outputs are reasonable:
 
 ```bash
 python3 autograde.py
