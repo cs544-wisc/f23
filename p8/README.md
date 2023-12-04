@@ -1,5 +1,3 @@
-# DRAFT!  Don't start yet.
-
 # P8 (6% of grade): BigQuery, Loans Data
 
 ## Overview
@@ -13,7 +11,7 @@ Google form (you'll make some submissions yourself and then
 immediately analyze the results).
 
 Learning objectives:
-* combine data from a variety of soures to compute results in BigQuery
+* combine data from a variety of sources to compute results in BigQuery
 * query live results from a Google form/sheet
 * perform spatial joins
 * train and evaluate models using BigQuery
@@ -49,9 +47,9 @@ gcloud auth application-default login --scopes=openid,https://www.googleapis.com
 ### :warning: Caution
 
 1. While running the command, it will ask you to paste some link to your browser. If you have multiple Google accounts in your browser, and do not want this to select the default one, then do the following: 
-    * paste the link in a incognito mode
+    * paste the link in an incognito mode
     * login to the Google account of your choice
-2. **Be careful**, because if a malicous party were to gain access to your
+2. **Be careful**, because if a malicious party were to gain access to your
 VM, they would have free access to all your Google Drive files (and
 more).  For example, if your Jupyter is listening publicly (i.e.,
 0.0.0.0 instead of localhost) and you have a weak password (or no
@@ -80,7 +78,7 @@ python3 -m jupyterlab --no-browser
 
 Setup an SSH tunnel and connect (you'll need to copy/paste a token
 from the terminal to the browser).  Then, create a notebook named
-`p8.ipynb`. This is only file we need from you.
+`p8.ipynb`. This is the only file we need from you.
 
 You can create a BigQuery client like this in your `p8.ipynb`:
 
@@ -101,8 +99,8 @@ q.to_dataframe()
 
 The autograder will extract your output from these cells, so it won't
 give points if not formatted correctly (extra spaces, split cells,
-etc.).  For this projects, answers are simple types (e.g., ints,
-floats, dicts), so you'll need to do a little extra work to get
+etc.).  For this project, answers are simple types (e.g., `int`s,
+`float`s, `dict`s), so you'll need to do a little extra work to get
 results out of the DataFrames you get from BigQuery.
 
 ## Part 1: County Data (Public Dataset)
@@ -112,7 +110,7 @@ For this part, you'll use the
 contains names, IDs, boundaries, and more for every county in the
 United States.
 
-If we hadn't provided you the name of the table, you could have found
+If we hadn't provided you with the name of the table, you could have found
 it yourself as follows:
 
 1. go to the GCP Marketplace by finding it in the menu or directly going to https://console.cloud.google.com/marketplace
@@ -147,7 +145,7 @@ It should show something like this:
 | ---:| -------: |
 | 0   |     3233 |
 
-Now let's answer some questions.
+Now, let's answer some questions.
 
 #### Q1: what is the `geo_id` for Dane county? (note that Madison is in Dane county). 
 
@@ -155,10 +153,10 @@ The output should be a string.
 
 #### Q2: how many counties are there per state?
 
-Answer for the five states with most counties.  The dataset lacks
+Answer for the five states with the most counties.  The dataset lacks
 state names, so we'll use `state_fips_code` instead of names.
 
-Your output should be a dict with 5 key/value pairs -- keys are the
+Your output should be a `dict` with 5 key/value pairs -- keys are the
 FIPS codes and values are the counts.  Example:
 
 ```python
@@ -177,7 +175,7 @@ Hints:
 2. when you re-run the queries, bytes billed is probably zero due to caching.  You can create a job config (to pass along with the query) to disable caching: `bigquery.QueryJobConfig(use_query_cache=False)`.  This will let you get realistic numbers for first-time runs.
 3. look up the Iowa pricing per TB here: https://cloud.google.com/bigquery/pricing#on_demand_pricing
 
-Answer with dict where keys indentify which query, and values are the cost in dollars.  Example:
+Answer with `dict` where keys identify which query, and values are the cost in dollars.  Example:
 
 ```python
 {'q1': ????, 'q2': ????}
@@ -218,8 +216,8 @@ The output ought to contain the `p8` dataset.
 
 #### Q5: how many loan applications are there in the HDMA data for each county?
 
-Answer with a dict where the key is the county name and the value is
-the count.  The dict should only contain the 10 counties with most
+Answer with a `dict` where the key is the county name and the value is
+the count.  The `dict` should only contain the 10 counties with most
 applications.  It should look like this:
 
 ```python
@@ -240,23 +238,23 @@ table to get the county name.
 
 ## Part 3: Application Data (Google Sheet Linked to Form)
 
-Now lets pretend you have a very lucrative data science job and want to buy a vacation home in WI.  First, decide a few things:
+Now let's pretend you have a very lucrative data science job and want to buy a vacation home in WI.  First, decide a few things:
 
 1. what do you wish your income to be?  (be reasonable!)
 2. how expensive of a house would you like to buy?
 3. where in WI would you like the house to be?  (use a tool like Google maps to identify exact latitude/longitude coordinates)
 
-<!--- TODO: New Form Link. Check. -->
+
 Apply for your loan in the Google form here:
 https://forms.gle/cf1R26MoGCmMriAN9. Feel free to apply multiple
 times if a single vacation home is insufficient for your needs.
 
-<!--- TODO: New Sheet Link. Check. -->
+
 The form is linked to this spreadsheet (check that your loan applications show up): https://docs.google.com/spreadsheets/d/11UeIBqQylAyNUBsIO54p6WiYJWHayQMfHDbUWq1jGco/
 
-Now run some code to add the sheet as an external BigQuery table. The name of the table must be `applications`
+Now, run some code to add the sheet as an external BigQuery table. The name of the table must be `applications`
 
-<!--- TODO: New Sheet Link. Check. -->
+
 ```python
 url = "https://docs.google.com/spreadsheets/d/11UeIBqQylAyNUBsIO54p6WiYJWHayQMfHDbUWq1jGco/"
 
@@ -284,7 +282,7 @@ You'll need to do a spatial join using the `county_geom` column of the
 the county name corresponding to each lat/lon point in the
 spreadsheet.
 
-Answer with a dict like this (key is county name and value is count):
+Answer with a `dict` like this (key is county name and value is count):
 
 ```python
 {'Dane': 1, ...}
@@ -304,11 +302,21 @@ on the HDMA data.
 
 Note that you would normally split your data into train/test so that
 overfitting doesn't give you an unrealistically good score -- to keep
-the project simple, we aren't bothering with train/test splits this
+the project simple; we aren't bothering with train/test splits this
 time.
 
-<!-- TODO: Added this to clarify -->
-**Note:** If you encounter an error like `NotFound: 404 Not found: Model <project>:<dataset>.<model>`, wait for a minute. Sometimes it takes 1-2 minutes for BigQuery to notice that a model has been created.
+<!-- DONE: Added this to clarify -->
+**Note:** If you encounter an error like `NotFound: 404 Not found: Model <project>:<dataset>.<model>`, make your notebook to wait for some time.
+Sometimes it takes 1-2 minutes for BigQuery to notice that a model has been created.
+To handle this case, you should write the following snippet before Q8 to make the notebook wait until BigQuery can see your model.
+
+```python
+import time
+while True:
+    if <your condition here>:  # Hint: use bq.list_models()
+        break
+    time.sleep(5)
+```
 
 #### Q9: what is the coefficient weight on the income column?
 
@@ -322,7 +330,7 @@ for all the applications in the Google sheet.
 
 ## Testing
 
-Run the following to check that your cell outputs are reasonable:
+Download the latest `tester.py`, `nbutils.py` and `autograde.py`. Run the following to check that your cell outputs are reasonable:
 
 ```bash
 python3 autograde.py
@@ -335,7 +343,7 @@ cell outputs.
 
 ## Submission
 
-Check (and double check :monocle_face:) that all the tests are passing
+Check (and double-check :monocle_face:) that all the tests are passing
 when you submit. Then, add p8.ipynb, commit, and push to GitHub.
 
 Do not forget to revoke the permission to access your Google
