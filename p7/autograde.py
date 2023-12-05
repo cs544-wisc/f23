@@ -401,6 +401,8 @@ def test_partition_json_creation():
     months_seen = set()
     part_nums_seen = set()
     partition_offsets = dict()
+    
+    time.sleep(60)
 
     for _ in range(15):
         error_msg = ""
