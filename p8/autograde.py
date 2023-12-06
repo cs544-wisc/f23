@@ -96,7 +96,7 @@ def q3():
 
     output = nbutils.parse_dict_float_output(outputs)
     if not nbutils.compare_dict_floats(
-        {'q1': 0.0010907649993896484, 'q2': 5.9604644775390625e-05}, 
+        {'q1': 5.9604644775390625e-05, 'q2': 5.9604644775390625e-05}, 
         output,
         tolerance=0.02):
         return "Wrong answer"
