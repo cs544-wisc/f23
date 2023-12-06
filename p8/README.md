@@ -21,7 +21,7 @@ Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
 
-* none yet
+* Dec 05: [Autograder](autograde.py) changed for Q3. Updated [setup](#warning-caution) to handle re-authentication issues.
 
 ## Setup
 
@@ -55,6 +55,7 @@ more).  For example, if your Jupyter is listening publicly (i.e.,
 0.0.0.0 instead of localhost) and you have a weak password (or no
 password), someone could gain access to your VM, and then these other
 resources.
+3. You may need to run this command again if you run into an error like `"Reauthentication is needed"`.
 
 When you're not actively working, you may want to revoke (take away)
 the permissions your VM has to minimize risk:
