@@ -22,7 +22,7 @@ Before starting, please review the [general project directions](../projects.md).
 ## Clarifications/Correction
 
 * Dec 05: [Autograder](autograde.py) changed for Q3. Updated [setup](#warning-caution) to handle re-authentication issues.
-* Dec 07: Added in clarifiation about backticks
+* Dec 07: Added in clarification about backticks. Added `jupyterlab` in installation.
 
 ## Setup
 
