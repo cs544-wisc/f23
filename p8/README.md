@@ -22,6 +22,7 @@ Before starting, please review the [general project directions](../projects.md).
 ## Clarifications/Correction
 
 * Dec 05: [Autograder](autograde.py) changed for Q3. Updated [setup](#warning-caution) to handle re-authentication issues.
+* Dec 07: Added in clarifiation about backticks
 
 ## Setup
 
@@ -297,7 +298,9 @@ feel free to hardcode 55 in your query if it helps.
 
 Create a linear regression model (`model_type='LINEAR_REG'`) to
 predict `loan_amount` based on `income`, and `loan_term` -- train it
-on the HDMA data.
+on the HDMA data. **You need to but backticks around your model and dataset name in your
+queries for this part**. For example, if your dataset was named `test` you need to specify it
+as `` `test` `` in your queries. 
 
 #### Q8: what is your model's `r2_score` on the HDMA dataset on which it was trained?
 
