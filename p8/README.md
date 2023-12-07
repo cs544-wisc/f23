@@ -34,7 +34,7 @@ this to correlate parts of your output with specific questions.
 Run JupyterLab directly on your VM (no Docker containers).  You'll need some packages:
 
 ```
-pip3 install google-cloud-bigquery google-cloud-bigquery-storage pyarrow tqdm ipywidgets pandas matplotlib db-dtypes pandas-gbq
+pip3 install jupyterlab google-cloud-bigquery google-cloud-bigquery-storage pyarrow tqdm ipywidgets pandas matplotlib db-dtypes pandas-gbq
 ```
 
 You'll also need to give your VM permission to access BigQuery and
