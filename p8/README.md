@@ -22,7 +22,8 @@ Before starting, please review the [general project directions](../projects.md).
 ## Clarifications/Correction
 
 * Dec 05: [Autograder](autograde.py) changed for Q3. Updated [setup](#warning-caution) to handle re-authentication issues.
-* Dec 07: Added in clarification about backticks. Added `jupyterlab` in installation.
+* Dec 07: Added clarification about backticks. Added `jupyterlab` in installation.
+* Dec 08: Added clarification about uploading parquet files.
 
 ## Setup
 
@@ -187,14 +188,13 @@ Answer with `dict` where keys identify which query, and values are the cost in d
 
 <!-- Link Updated. Check! -->
 Download
-https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.parquet to
-your VM.  This is a subset of the data from the CSV in
+https://pages.cs.wisc.edu/~harter/cs544/data/hdma-wi-2021.parquet.  This is a subset of the data from the CSV in
 hdma-wi-2021.zip that we used in earlier projects.  We've done some
 cleanup and conversion work for you to make the parquet file -- [see
 here](cleanup.md) if you're interested about what exactly we've done.
 
 <!-- TODO: should we specify a name? -->
-Do the following two tasks outside your `p8.ipynb` notebook:
+Do the following two tasks outside your `p8.ipynb` notebook (you can use [Google Cloud Storage WebUI](https://console.cloud.google.com/storage/)):
 1. Create a private GCS bucket (named whatever you like, for example: `cs544_p8`). 
 2. Upload the parquet file to your bucket.
 
