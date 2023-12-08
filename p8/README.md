@@ -298,7 +298,7 @@ feel free to hardcode 55 in your query if it helps.
 
 Create a linear regression model (`model_type='LINEAR_REG'`) to
 predict `loan_amount` based on `income`, and `loan_term` -- train it
-on the HDMA data. **You need to but backticks around your model and dataset name in your
+on the HDMA data. **You need to put backticks around your model and dataset name in your
 queries for this part**. For example, if your dataset was named `test` you need to specify it
 as `` `test` `` in your queries. 
 
