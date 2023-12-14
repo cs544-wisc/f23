@@ -18,13 +18,14 @@ different processes, launching from the same Python program.
 
 Learning objectives:
 * write code for Kafka producers and consumers
-* apply streaming techniques to achive "exactly once" semantics
+* apply streaming techniques to achieve "exactly once" semantics
 * use manual and automatic assignment of Kafka topics and partitions
 
 Before starting, please review the [general project directions](../projects.md).
 
 ## Clarifications/Correction
 
+* Dec 3 : fixed typo in learning objectives
 * Nov 24: autograder.py added.
 * Nov 28: autograder bugfix: Added COPY statement to Dockerfile (required to run autograder correctly)
 * Nov 30: autograder update: Increase timeouts and delays to ensure consistent test results
