@@ -32,21 +32,32 @@ def _cleanup(*args, **kwargs):
 
 
 def wait_for_all_three_up():
-    print("Waiting for the cassandra cluster to start up - This is going to take a while!!")
+    up_loop = 0
+    while up_loop < 10:
+        count = 0
+        print("Waiting for the cassandra cluster to start up - This is going to take a while!!")
+        all_three_up = False
+        command_to_run = "docker exec -it p6-db-1 nodetool status"
 
-    all_three_up = False
-    command_to_run = "docker exec -it p6-db-1 nodetool status"
+        while not all_three_up and count < 100:
+            time.sleep(1)  # Wait a little bit
 
-    while not all_three_up:
-        time.sleep(1)  # Wait a little bit
+            # Read the result of nodetool status
+            result = subprocess.run(
+                command_to_run, capture_output=True, text=True, shell=True, env=os.environ.copy())
 
-        # Read the result of nodetool status
-        result = subprocess.run(
-            command_to_run, capture_output=True, text=True, shell=True, env=os.environ.copy())
+            all_three_up = result.stdout.count("UN") >= 3
+            count += 1
+        
+        time.sleep(5)
+        if count >= 100:
+            _cleanup()
+            subprocess.check_output("docker compose up -d", shell=True, env = get_environment())
+            up_loop += 1
+            time.sleep(10)
+        else:
+            break
 
-        all_three_up = result.stdout.count("UN") >= 3
-
-    time.sleep(5)
     print("Cassandra cluster has started up")
 
 
